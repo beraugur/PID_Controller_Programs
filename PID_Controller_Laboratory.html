@@ -1,0 +1,2367 @@
+<!DOCTYPE html>
+<html lang="tr" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PID Kontrol & Sistem Analiz Laboratuvarı</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #070b14;
+      color: #e2e8f0;
+    }
+    .font-mono-num {
+      font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Özel Range Slider Stilleri */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 6px;
+      border-radius: 999px;
+      background: #1e293b;
+      border: 1px solid #334155;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      margin-top: -6px;
+      height: 18px;
+      width: 18px;
+      border-radius: 50%;
+      border: 2px solid #090d16;
+      background: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.45);
+      transition: transform 0.12s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+    input[type="range"].slider-amber::-webkit-slider-thumb {
+      background: #fbbf24;
+      box-shadow: 0 0 10px rgba(251, 191, 36, 0.45);
+    }
+    input[type="range"].slider-emerald::-webkit-slider-thumb {
+      background: #34d399;
+      box-shadow: 0 0 10px rgba(52, 211, 153, 0.45);
+    }
+    input[type="range"]:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+    input[type="range"]:disabled::-webkit-slider-thumb {
+      background: #64748b;
+      box-shadow: none;
+    }
+
+    /* İnce kaydırma çubuğu */
+    ::-webkit-scrollbar {
+      width: 7px;
+      height: 7px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0b1120;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-cyan-500/30">
+
+  <!-- ===================================================================== -->
+  <!-- ÜST NAVİGASYON ÇUBUĞU (BAŞLIK + MOD SEÇİCİ + KATSAYI TABLOSU)         -->
+  <!-- ===================================================================== -->
+  <header class="sticky top-0 z-30 border-b border-slate-800/90 bg-slate-950/90 backdrop-blur-md">
+    <div class="max-w-[1480px] mx-auto px-4 py-3 flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+
+      <!-- Sol: Başlık ve Aktif Sistem Özeti -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/25 to-blue-600/20 border border-cyan-500/35 flex items-center justify-center text-cyan-300 font-mono-num font-bold text-sm shrink-0">
+          PID
+        </div>
+        <div class="min-w-0">
+          <h1 class="text-base sm:text-lg font-bold tracking-tight text-white truncate">
+            PID Kontrol &amp; Sistem Analiz Laboratuvarı
+          </h1>
+          <div class="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11px] font-mono-num text-slate-400">
+            <span id="headerPlantBadge" class="text-cyan-300 font-medium">K<sub>u</sub> = 8.000000 | P<sub>u</sub> = 3.627599 s</span>
+            <span class="text-slate-700 hidden sm:inline">•</span>
+            <span id="headerStatusText" class="text-emerald-400 font-semibold">KARARLI</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Orta: Ana Mod Değiştirici (2 Belirgin Sekme) -->
+      <nav aria-label="Çalışma Modu" class="flex items-center p-1 rounded-xl bg-slate-900 border border-slate-800 self-start xl:self-auto">
+        <button id="tabMathBtn" type="button" onclick="switchPrimaryMode('math')"
+          class="px-3.5 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center gap-2 cursor-pointer">
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+          </svg>
+          <span>Matematiksel Modelleme G(s)</span>
+        </button>
+        <button id="tabFieldBtn" type="button" onclick="switchPrimaryMode('field')"
+          class="px-3.5 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center gap-2 cursor-pointer">
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+          <span>Deneysel / Saha Yöntemleri</span>
+        </button>
+      </nav>
+
+      <!-- Sağ: Katsayı Tablosu Çekmece Butonu -->
+      <div class="flex items-center gap-2.5 self-start xl:self-auto">
+        <button id="openTableDrawerBtn" type="button"
+          class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/40 transition shadow-sm cursor-pointer">
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+          </svg>
+          <span>Katsayı Tablosu (ZN / TL / CC / IMC)</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===================================================================== -->
+  <!-- ANA ÇALIŞMA ALANI                                                     -->
+  <!-- ===================================================================== -->
+  <main class="flex-1 max-w-[1480px] w-full mx-auto px-4 py-4 space-y-4">
+
+    <!-- =================================================================== -->
+    <!-- DİNAMİK SİSTEM YAPILANDIRMA PANELİ (MOD 1 VEYA MOD 2)               -->
+    <!-- =================================================================== -->
+    <section class="bg-slate-900/75 border border-slate-800 rounded-2xl p-4 space-y-4">
+
+      <!-- MOD 1: MATEMATİKSEL MODELLEME G(s) -->
+      <div id="modeMathPanel" class="space-y-4">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          <div>
+            <h2 class="text-sm font-bold text-white flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+              Matematiksel Modelleme — Transfer Fonksiyonu G<sub>p</sub>(s)
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">
+              Hazır bir sınav/proses senaryosu seçin veya pay, payda (5. dereceye kadar) ve ölü zaman (θ) katsayılarını girin.
+            </p>
+          </div>
+          <!-- Hazır Sistem Senaryoları -->
+          <div class="flex flex-wrap items-center gap-1.5" id="presetButtonsContainer">
+            <!-- JS tarafından doldurulur -->
+          </div>
+        </div>
+
+        <!-- Manuel Transfer Fonksiyonu Girişleri + Canlı Gp(s) Çıktısı -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
+          <div class="lg:col-span-3">
+            <label for="mathNumInput" class="block text-[11px] font-semibold text-slate-300 mb-1">
+              Pay Polinomu N(s) <span class="text-slate-500 font-normal">(yüksekten sabite)</span>
+            </label>
+            <input id="mathNumInput" type="text" value="1" autocomplete="off" spellcheck="false"
+              placeholder="Örn: 1 veya 0.5, 1"
+              class="w-full font-mono-num text-xs text-white bg-slate-950 border border-slate-700 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/40 focus:outline-none rounded-xl px-3 py-2.5" />
+          </div>
+
+          <div class="lg:col-span-4">
+            <label for="mathDenInput" class="block text-[11px] font-semibold text-slate-300 mb-1">
+              Payda Polinomu D(s) <span class="text-slate-500 font-normal">(maks. 5. derece)</span>
+            </label>
+            <input id="mathDenInput" type="text" value="1, 3, 3, 1" autocomplete="off" spellcheck="false"
+              placeholder="Örn: 1, 3, 3, 1"
+              class="w-full font-mono-num text-xs text-white bg-slate-950 border border-slate-700 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/40 focus:outline-none rounded-xl px-3 py-2.5" />
+          </div>
+
+          <div class="lg:col-span-2">
+            <label for="mathThetaInput" class="block text-[11px] font-semibold text-slate-300 mb-1">
+              Ölü Zaman θ (sn)
+            </label>
+            <input id="mathThetaInput" type="text" inputmode="decimal" value="0.000000" autocomplete="off" spellcheck="false"
+              class="w-full font-mono-num text-xs text-white bg-slate-950 border border-slate-700 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/40 focus:outline-none rounded-xl px-3 py-2.5" />
+          </div>
+
+          <div class="lg:col-span-3 flex gap-2">
+            <button id="applyMathPlantBtn" type="button"
+              class="w-full py-2.5 px-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition shadow-sm cursor-pointer">
+              Sistemi Güncelle
+            </button>
+          </div>
+        </div>
+
+        <div id="mathErrorBox" class="hidden text-xs text-rose-300 bg-rose-950/50 border border-rose-500/40 rounded-xl px-3.5 py-2"></div>
+      </div>
+
+      <!-- MOD 2: DENEYSEL / SAHA YÖNTEMLERİ -->
+      <div id="modeFieldPanel" class="hidden space-y-4">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div>
+            <h2 class="text-sm font-bold text-white flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+              Deneysel / Saha Yöntemleri — Ölçüm Verisinden Model &amp; Ayar
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">
+              Matematiksel modeli bilinmeyen gerçek prosesler için saha testi verilerini girin; eşdeğer sistem arka planda otomatik modellenir.
+            </p>
+          </div>
+
+          <!-- Alt Mod Seçici (Kapalı Çevrim vs Açık Çevrim FOPDT) -->
+          <div class="flex items-center p-1 rounded-xl bg-slate-950 border border-slate-800 self-start md:self-auto">
+            <button id="subClosedBtn" type="button" onclick="switchFieldSubMode('closed')"
+              class="px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer">
+              Kapalı Çevrim (K<sub>u</sub> &amp; P<sub>u</sub>)
+            </button>
+            <button id="subFopdtBtn" type="button" onclick="switchFieldSubMode('fopdt')"
+              class="px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer">
+              Açık Çevrim FOPDT (K, τ, θ)
+            </button>
+          </div>
+        </div>
+
+        <!-- Alt Mod A: Kapalı Çevrim Testi (Ku & Pu) -->
+        <div id="fieldClosedBox" class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+          <div class="md:col-span-4">
+            <label for="fieldKuInput" class="block text-[11px] font-semibold text-slate-300 mb-1">
+              Ölçülen Kritik Kazanç (K<sub>u</sub>)
+            </label>
+            <input id="fieldKuInput" type="text" inputmode="decimal" value="12.500000" autocomplete="off" spellcheck="false"
+              class="w-full font-mono-num text-xs text-white bg-slate-950 border border-slate-700 focus:border-amber-400 focus:outline-none rounded-xl px-3 py-2.5" />
+          </div>
+          <div class="md:col-span-4">
+            <label for="fieldPuInput" class="block text-[11px] font-semibold text-slate-300 mb-1">
+              Ölçülen Kritik Periyot (P<sub>u</sub>, sn)
+            </label>
+            <input id="fieldPuInput" type="text" inputmode="decimal" value="4.200000" autocomplete="off" spellcheck="false"
+              class="w-full font-mono-num text-xs text-white bg-slate-950 border border-slate-700 focus:border-amber-400 focus:outline-none rounded-xl px-3 py-2.5" />
+          </div>
+          <div class="md:col-span-4">
+            <button id="applyFieldClosedBtn" type="button"
+              class="w-full py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition cursor-pointer">
+              Eşdeğer Sistemi Oluştur
+            </button>
+          </div>
+          <p class="md:col-span-12 text-[11px] text-slate-400 font-mono-num">
+            Eşdeğer 3. Derece Model: G<sub>p</sub>(s) = (8 / K<sub>u</sub>) / (s/α + 1)<sup>3</sup>, &nbsp; α = 2π / (√3 · P<sub>u</sub>) — Girilen K<sub>u</sub> ve P<sub>u</sub> ile birebir örtüşür.
+          </p>
+        </div>
+
+        <!-- Alt Mod B: Açık Çevrim Basamak Tepkisi (FOPDT: K, τ, θ, λ) -->
+        <div id="fieldFopdtBox" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
+          <div class="lg:col-span-2">
+            <label for="fopdtKInput" class="block text-[11px] font-semibold text-slate-300 mb-1">
+              Proses Kazancı (K)
+            </label>
+            <input id="fopdtKInput" type="text" inputmode="decimal" value="2.000000" autocomplete="off" spellcheck="false"
+              class="w-full font-mono-num text-xs text-white bg-slate-950 border border-slate-700 focus:border-emerald-400 focus:outline-none rounded-xl px-3 py-2.5" />
+          </div>
+          <div class="lg:col-span-2">
+            <label for="fopdtTauInput" class="block text-[11px] font-semibold text-slate-300 mb-1">
+              Zaman Sabiti τ (sn)
+            </label>
+            <input id="fopdtTauInput" type="text" inputmode="decimal" value="5.000000" autocomplete="off" spellcheck="false"
+              class="w-full font-mono-num text-xs text-white bg-slate-950 border border-slate-700 focus:border-emerald-400 focus:outline-none rounded-xl px-3 py-2.5" />
+          </div>
+          <div class="lg:col-span-2">
+            <label for="fopdtThetaInput" class="block text-[11px] font-semibold text-slate-300 mb-1">
+              Ölü Zaman θ (sn)
+            </label>
+            <input id="fopdtThetaInput" type="text" inputmode="decimal" value="1.500000" autocomplete="off" spellcheck="false"
+              class="w-full font-mono-num text-xs text-white bg-slate-950 border border-slate-700 focus:border-emerald-400 focus:outline-none rounded-xl px-3 py-2.5" />
+          </div>
+          <div class="lg:col-span-3">
+            <div class="flex items-center justify-between mb-1">
+              <label for="fopdtLambdaInput" class="text-[11px] font-semibold text-slate-300">
+                IMC Filtresi λ (sn)
+              </label>
+              <button id="autoLambdaBtn" type="button"
+                class="text-[10px] text-emerald-400 hover:text-emerald-300 underline cursor-pointer">
+                Önerilen λ
+              </button>
+            </div>
+            <input id="fopdtLambdaInput" type="text" inputmode="decimal" value="1.200000" autocomplete="off" spellcheck="false"
+              class="w-full font-mono-num text-xs text-white bg-slate-950 border border-slate-700 focus:border-emerald-400 focus:outline-none rounded-xl px-3 py-2.5" />
+          </div>
+          <div class="lg:col-span-3">
+            <button id="applyFopdtBtn" type="button"
+              class="w-full py-2.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition cursor-pointer">
+              FOPDT Modelini Uygula
+            </button>
+          </div>
+        </div>
+
+        <div id="fieldErrorBox" class="hidden text-xs text-rose-300 bg-rose-950/50 border border-rose-500/40 rounded-xl px-3.5 py-2"></div>
+      </div>
+
+      <!-- CANLI AKTİF SİSTEM ÖZET ŞERİDİ (HER İKİ MODDA DA ORTAK) -->
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-3 border-t border-slate-800/80 bg-slate-950/55 -mx-4 -mb-4 px-4 py-3 rounded-b-2xl">
+        <div class="flex flex-wrap items-center gap-2 text-xs font-mono-num">
+          <span class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 font-sans font-semibold text-[11px]">Aktif Sistem</span>
+          <span id="livePlantEquation" class="text-white font-semibold">G<sub>p</sub>(s) = 1 / (s³ + 3s² + 3s + 1)</span>
+        </div>
+        <div class="flex flex-wrap items-center gap-3 text-xs font-mono-num">
+          <span class="text-slate-400">K<sub>u</sub> = <strong id="liveKu" class="text-cyan-300">8.000000</strong></span>
+          <span class="text-slate-700">|</span>
+          <span class="text-slate-400">ω<sub>u</sub> = <strong id="liveWu" class="text-sky-300">1.732051</strong> rad/s</span>
+          <span class="text-slate-700">|</span>
+          <span class="text-slate-400">P<sub>u</sub> = <strong id="livePu" class="text-amber-300">3.627599</strong> s</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- PAYLAŞILAN VE ADAPTİF PID KONTROLCÜ PANELİ                          -->
+    <!-- =================================================================== -->
+    <section class="bg-slate-900/75 border border-slate-800 rounded-2xl p-4 space-y-4">
+      <!-- Üst Şerit: Hızlı Ayar Butonları + Paralel Eşdeğerler -->
+      <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
+        <div class="flex flex-wrap items-center gap-1.5" id="quickTuneBar">
+          <span class="text-[11px] uppercase tracking-wider font-semibold text-slate-400 mr-1">Hızlı Ayar:</span>
+          <!-- JS tarafından aktif moda ve Ku durumuna göre doldurulur -->
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3 bg-slate-950/80 border border-slate-800 rounded-xl px-3.5 py-2 text-xs font-mono-num">
+          <span class="text-slate-400 font-sans text-[11px] font-medium">Paralel:</span>
+          <span class="text-cyan-300">K<sub>p</sub>=<strong id="eqKp" class="text-white">3.600000</strong></span>
+          <span class="text-slate-700">|</span>
+          <span class="text-amber-300">K<sub>i</sub>=<strong id="eqKi" class="text-white">0.451087</strong></span>
+          <span class="text-slate-700">|</span>
+          <span class="text-emerald-300">K<sub>d</sub>=<strong id="eqKd" class="text-white">2.072914</strong></span>
+        </div>
+      </div>
+
+      <!-- 3 Parametre Kartı (Kp, Ti, Td) -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+        <!-- Kp -->
+        <div class="bg-slate-950/75 border border-slate-800/90 rounded-xl p-3.5 flex flex-col justify-between gap-3">
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <label for="kpInput" class="text-xs font-bold uppercase tracking-wider text-cyan-400">
+                Oransal Kazanç (K<sub>p</sub>)
+              </label>
+              <p class="text-[11px] text-slate-400 mt-0.5">0° faz katkısı; kazanç eğrisini dikey kaydırır.</p>
+            </div>
+            <input id="kpInput" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="3.600000"
+              class="w-32 text-right font-mono-num text-xs font-bold text-white bg-slate-900 border border-slate-700 focus:border-cyan-400 focus:outline-none rounded-lg px-2.5 py-1.5" />
+          </div>
+          <div>
+            <input id="kpSlider" type="range" min="0.000001" max="75" step="0.000001" value="3.6" class="w-full" />
+            <div class="flex justify-between text-[10px] text-slate-500 font-mono-num mt-1">
+              <span>0.000001</span>
+              <span>Klavye maks: 10000</span>
+              <span id="kpMaxLabel">75.00</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ti -->
+        <div class="bg-slate-950/75 border border-slate-800/90 rounded-xl p-3.5 flex flex-col justify-between gap-2.5">
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <label for="tiInput" class="text-xs font-bold uppercase tracking-wider text-amber-400">
+                İntegral Zaman Sabiti (T<sub>i</sub>)
+              </label>
+              <p class="text-[11px] text-slate-400 mt-0.5">Kalıcı hatayı sıfırlar; küçüldükçe faz gecikmesi artar.</p>
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
+              <input id="tiInput" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="7.980717"
+                class="w-32 text-right font-mono-num text-xs font-bold text-white bg-slate-900 border border-slate-700 focus:border-amber-400 focus:outline-none rounded-lg px-2.5 py-1.5 disabled:opacity-40" />
+              <span class="text-[11px] text-slate-500 font-mono-num">s</span>
+            </div>
+          </div>
+          <div class="flex items-center justify-between bg-slate-900/80 border border-slate-800 rounded-lg px-2.5 py-1.5">
+            <span id="iToggleText" class="text-[11px] font-medium text-amber-300">İntegral (I) Aktif</span>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input id="iActiveToggle" type="checkbox" checked class="sr-only peer" />
+              <div class="w-9 h-5 bg-slate-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
+            </label>
+          </div>
+          <div>
+            <input id="tiSlider" type="range" min="0.000001" max="75" step="0.000001" value="7.980717" class="w-full slider-amber" />
+            <div class="flex justify-between text-[10px] text-slate-500 font-mono-num mt-1">
+              <span>0.000001 s</span>
+              <span id="tiMaxLabel">75.00 s</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Td -->
+        <div class="bg-slate-950/75 border border-slate-800/90 rounded-xl p-3.5 flex flex-col justify-between gap-2.5">
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <label for="tdInput" class="text-xs font-bold uppercase tracking-wider text-emerald-400">
+                Türev Zaman Sabiti (T<sub>d</sub>)
+              </label>
+              <p class="text-[11px] text-slate-400 mt-0.5">Faz avansı ekler, sönümlemeyi artırır (N=15 filtreli).</p>
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
+              <input id="tdInput" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="0.575809"
+                class="w-32 text-right font-mono-num text-xs font-bold text-white bg-slate-900 border border-slate-700 focus:border-emerald-400 focus:outline-none rounded-lg px-2.5 py-1.5 disabled:opacity-40" />
+              <span class="text-[11px] text-slate-500 font-mono-num">s</span>
+            </div>
+          </div>
+          <div class="flex items-center justify-between bg-slate-900/80 border border-slate-800 rounded-lg px-2.5 py-1.5">
+            <span id="dToggleText" class="text-[11px] font-medium text-emerald-300">Türev (D) Aktif</span>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input id="dActiveToggle" type="checkbox" checked class="sr-only peer" />
+              <div class="w-9 h-5 bg-slate-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+            </label>
+          </div>
+          <div>
+            <input id="tdSlider" type="range" min="0" max="20" step="0.000001" value="0.575809" class="w-full slider-emerald" />
+            <div class="flex justify-between text-[10px] text-slate-500 font-mono-num mt-1">
+              <span>0.000000 s</span>
+              <span id="tdMaxLabel">20.00 s</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Simülasyon Ayarları Şeridi (Süre + Bozucu Etki) -->
+      <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800/80 text-xs">
+        <div class="flex flex-wrap items-center gap-4">
+          <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+            <input id="disturbanceToggle" type="checkbox" class="w-4 h-4 rounded accent-rose-500 cursor-pointer" />
+            <span class="text-slate-300 font-medium">Bozucu Etki (T<sub>sim</sub>/2 anında -20% Yük)</span>
+          </label>
+          <span class="text-slate-700 hidden sm:inline">|</span>
+          <div class="flex items-center gap-2">
+            <label class="inline-flex items-center gap-1.5 cursor-pointer select-none text-slate-300">
+              <input id="autoTsimToggle" type="checkbox" checked class="w-4 h-4 rounded accent-cyan-500 cursor-pointer" />
+              <span>Otomatik T<sub>sim</sub></span>
+            </label>
+            <input id="tsimInput" type="text" inputmode="decimal" value="25.0" disabled
+              class="w-20 text-right font-mono-num text-xs text-white bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 disabled:opacity-50" />
+            <span class="text-slate-500 font-mono-num">s</span>
+          </div>
+        </div>
+        <div class="text-[11px] font-mono-num text-slate-400">
+          ISA Formu: C(s) = K<sub>p</sub>(1 + 1/(T<sub>i</sub>s) + T<sub>d</sub>s)
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- CANLI KPI METRİK KARTLARI                                           -->
+    <!-- =================================================================== -->
+    <section class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div class="bg-slate-900/75 border border-slate-800 rounded-xl p-3">
+        <div class="text-[11px] text-slate-400">Sistem Durumu</div>
+        <div id="kpiStatus" class="text-sm font-bold text-emerald-400 mt-1">KARARLI</div>
+      </div>
+      <div class="bg-slate-900/75 border border-slate-800 rounded-xl p-3">
+        <div class="text-[11px] text-slate-400">Aşım (Overshoot)</div>
+        <div id="kpiOS" class="font-mono-num text-base font-bold text-amber-300 mt-0.5">%0.00</div>
+      </div>
+      <div class="bg-slate-900/75 border border-slate-800 rounded-xl p-3">
+        <div class="text-[11px] text-slate-400">Yükselme / Yerleşme</div>
+        <div id="kpiTimes" class="font-mono-num text-sm font-bold text-cyan-300 mt-1">0.00s / 0.00s</div>
+      </div>
+      <div class="bg-slate-900/75 border border-slate-800 rounded-xl p-3">
+        <div class="text-[11px] text-slate-400">Kalıcı Hata (e<sub>ss</sub>)</div>
+        <div id="kpiEss" class="font-mono-num text-base font-bold text-slate-100 mt-0.5">0.000000</div>
+      </div>
+      <div class="bg-slate-900/75 border border-slate-800 rounded-xl p-3">
+        <div class="text-[11px] text-slate-400">Gain Margin (GM)</div>
+        <div id="kpiGM" class="font-mono-num text-base font-bold text-cyan-300 mt-0.5">+0.00 dB</div>
+        <div id="kpiGMSub" class="font-mono-num text-[10px] text-slate-400 truncate">Lin: 1.00 | ωpc: -</div>
+      </div>
+      <div class="bg-slate-900/75 border border-slate-800 rounded-xl p-3">
+        <div class="text-[11px] text-slate-400">Phase Margin (PM)</div>
+        <div id="kpiPM" class="font-mono-num text-base font-bold text-emerald-300 mt-0.5">0.00°</div>
+        <div id="kpiPMSub" class="font-mono-num text-[10px] text-slate-400 truncate">ωgc: - rad/s</div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- 3 SENKRONİZE YÜKSEK ÇÖZÜNÜRLÜKLÜ GRAFİK                             -->
+    <!-- =================================================================== -->
+    <section class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+
+      <!-- 1. ZAMAN CEVABI -->
+      <div class="bg-slate-900/75 border border-slate-800 rounded-2xl p-4 flex flex-col">
+        <div class="flex items-start justify-between gap-2 mb-2.5">
+          <div>
+            <h3 class="text-sm font-bold text-white">1. Basamak Tepkisi — y(t)</h3>
+            <p class="text-[11px] text-slate-400">RK4 + Ring-Buffer Ölü Zaman + N=15 Türev Filtresi</p>
+          </div>
+          <div class="flex items-center gap-2 text-[10px] font-mono-num shrink-0">
+            <span class="text-cyan-400">— y(t)</span>
+            <span class="text-slate-400">-- r(t)=1</span>
+          </div>
+        </div>
+        <div class="relative h-72 w-full bg-slate-950 rounded-xl border border-slate-800/90 overflow-hidden">
+          <canvas id="stepCanvas"></canvas>
+          <div id="unstableBanner" class="hidden absolute top-2.5 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-rose-500/20 border border-rose-500/50 text-rose-300 text-[11px] font-bold backdrop-blur-sm whitespace-nowrap">
+            ⚠ Sistem Kararsız — Çıkış Iraksıyor
+          </div>
+        </div>
+        <p id="diagnosisBox" class="mt-3 text-xs text-slate-300 bg-slate-950/75 border border-slate-800/90 border-l-2 border-l-cyan-400 rounded-lg p-2.5 leading-relaxed">
+          Analiz hesaplanıyor...
+        </p>
+      </div>
+
+      <!-- 2. BODE DİYAGRAMI -->
+      <div class="bg-slate-900/75 border border-slate-800 rounded-2xl p-4 flex flex-col">
+        <div class="flex items-start justify-between gap-2 mb-2.5">
+          <div>
+            <h3 class="text-sm font-bold text-white">2. Bode Diyagramı — L(jω) = C(jω)G<sub>p</sub>(jω)</h3>
+            <p class="text-[11px] text-slate-400">Otomatik ölçekli logaritmik frekans cevabı &amp; marjlar</p>
+          </div>
+          <div class="flex items-center gap-2 text-[10px] font-mono-num shrink-0">
+            <span class="text-cyan-400">|L| dB</span>
+            <span class="text-amber-400">∠L °</span>
+          </div>
+        </div>
+        <div class="relative h-72 w-full bg-slate-950 rounded-xl border border-slate-800/90 overflow-hidden">
+          <canvas id="bodeCanvas"></canvas>
+        </div>
+        <div class="mt-3 bg-slate-950/75 border border-slate-800/90 rounded-lg p-2.5 text-[11px] text-slate-300 leading-relaxed">
+          <span class="text-cyan-300 font-semibold">Frekans Analizi:</span>
+          Ölü zaman varsa faz eğrisine tam <span class="font-mono-num text-amber-300">-ωθ·(180/π)</span> gecikmesi eklenir;
+          <span class="text-cyan-300">0 dB</span> geçişinde PM, <span class="text-rose-300">-180°</span> geçişinde GM işaretlenir.
+        </div>
+      </div>
+
+      <!-- 3. s-DÜZLEMİ -->
+      <div class="bg-slate-900/75 border border-slate-800 rounded-2xl p-4 flex flex-col">
+        <div class="flex items-start justify-between gap-2 mb-2.5">
+          <div>
+            <h3 class="text-sm font-bold text-white">3. s-Düzlemi — Kutup &amp; Sıfır Haritası</h3>
+            <p id="splaneSubtitle" class="text-[11px] text-slate-400">Kapalı çevrim kökleri (Durand-Kerner çözümü)</p>
+          </div>
+          <div class="flex items-center gap-2 text-[10px] font-mono-num shrink-0">
+            <span class="text-cyan-400 font-bold">× LHP</span>
+            <span class="text-rose-400 font-bold">× RHP</span>
+            <span class="text-emerald-400 font-bold">○ Sıfır</span>
+          </div>
+        </div>
+        <div class="relative h-72 w-full bg-slate-950 rounded-xl border border-slate-800/90 overflow-hidden">
+          <canvas id="splaneCanvas"></canvas>
+          <div id="padeBadge" class="hidden absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-mono-num">
+            Padé (2,2) Yaklaşımı
+          </div>
+        </div>
+        <div class="mt-3 bg-slate-950/75 border border-slate-800/90 rounded-lg p-2.5 text-[11px] font-mono-num space-y-1">
+          <div class="flex items-center justify-between text-slate-400 border-b border-slate-800 pb-1">
+            <span>Kapalı Çevrim Kutupları</span>
+            <span id="poleCountLabel" class="text-slate-500">0 Kutup</span>
+          </div>
+          <div id="polesList" class="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-0.5 max-h-16 overflow-y-auto"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===================================================================== -->
+  <!-- AÇILIR/KAPANIR KATSAYI TABLOSU ÇEKMECESİ / MODALI (VARSAYILAN GİZLİ)  -->
+  <!-- ===================================================================== -->
+  <div id="tableDrawerBackdrop" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex justify-end">
+    <div id="tableDrawerPanel" class="w-full max-w-4xl h-full bg-slate-900 border-l border-slate-800 shadow-2xl flex flex-col">
+      <!-- Çekmece Başlığı -->
+      <div class="flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-slate-950/70 shrink-0">
+        <div>
+          <h2 class="text-base sm:text-lg font-bold text-white">
+            PID Ayarlama Katsayı Tablosu (ZN / TL / Cohen-Coon / IMC)
+          </h2>
+          <p id="drawerPlantMeta" class="text-xs text-slate-400 font-mono-num mt-0.5">
+            Aktif sistem için 6 ondalık basamak hassasiyetle hesaplandı.
+          </p>
+        </div>
+        <button id="closeTableDrawerBtn" type="button" aria-label="Kapat"
+          class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition cursor-pointer">
+          ✕
+        </button>
+      </div>
+
+      <!-- Tablo İçeriği -->
+      <div class="flex-1 overflow-y-auto p-5 space-y-6">
+
+        <!-- Bölüm 1: Kapalı Çevrim Yöntemleri -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-cyan-400">
+              1. Kapalı Çevrim Yöntemleri (Ziegler-Nichols &amp; Tyreus-Luyben)
+            </h3>
+            <span id="drawerKuPuTag" class="text-xs font-mono-num text-slate-400"></span>
+          </div>
+          <div class="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/60">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="border-b border-slate-800 text-slate-400 bg-slate-950">
+                  <th class="py-2.5 px-3 font-semibold">Yöntem</th>
+                  <th class="py-2.5 px-3 font-semibold">Formüller (K<sub>p</sub>, T<sub>i</sub>, T<sub>d</sub>)</th>
+                  <th class="py-2.5 px-3 font-semibold text-cyan-300">Hesaplanan (6 Hane)</th>
+                  <th class="py-2.5 px-3 text-right font-semibold">İşlem</th>
+                </tr>
+              </thead>
+              <tbody id="closedLoopTableBody" class="divide-y divide-slate-800/80 font-mono-num"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Bölüm 2: Açık Çevrim / FOPDT Yöntemleri -->
+        <div>
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-400">
+              2. Açık Çevrim FOPDT Yöntemleri (Open-Loop ZN, Cohen-Coon, IMC)
+            </h3>
+            <span id="drawerFopdtTag" class="text-xs font-mono-num text-slate-400"></span>
+          </div>
+          <div class="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/60">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="border-b border-slate-800 text-slate-400 bg-slate-950">
+                  <th class="py-2.5 px-3 font-semibold">Yöntem</th>
+                  <th class="py-2.5 px-3 font-semibold">Formüller (K, τ, θ, λ)</th>
+                  <th class="py-2.5 px-3 font-semibold text-emerald-300">Hesaplanan (6 Hane)</th>
+                  <th class="py-2.5 px-3 text-right font-semibold">İşlem</th>
+                </tr>
+              </thead>
+              <tbody id="openLoopTableBody" class="divide-y divide-slate-800/80 font-mono-num"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Alt Bilgi -->
+      <div class="px-5 py-3 border-t border-slate-800 bg-slate-950/70 flex items-center justify-between text-[11px] text-slate-400 shrink-0">
+        <span>Herhangi bir satırdaki <strong>Uygula</strong> butonu parametreleri anında PID kontrolcüye yükler.</span>
+        <span class="font-mono-num text-slate-500">ESC ile kapat</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- JAVASCRIPT: MATEMATİK MOTORU, ÇÖZÜCÜLER, RK4 VE GRAFİK MOTORU         -->
+  <!-- ===================================================================== -->
+  <script>
+    // =========================================================================
+    // 1. HAZIR SİSTEM SENARYOLARI (MOD 1)
+    // =========================================================================
+    const MATH_PRESETS = [
+      {
+        id: 'std3',
+        label: 'Standart 3. Derece (Ku=8)',
+        num: [1],
+        den: [1, 3, 3, 1],
+        theta: 0
+      },
+      {
+        id: 'high50',
+        label: 'Yüksek Kazanç (Ku=50)',
+        num: [0.16],
+        den: [1, 3, 3, 1],
+        theta: 0
+      },
+      {
+        id: 'deadtime',
+        label: 'Ölü Zamanlı (Ku≈2.24)',
+        num: [1.01],
+        den: [1, 1],
+        theta: 1.0
+      },
+      {
+        id: 'exam126',
+        label: '3 Kutuplu Sınav (Ku=126)',
+        num: [1],
+        den: [1, 8, 17, 10],
+        theta: 0
+      },
+      {
+        id: 'custom',
+        label: 'Özel G(s)',
+        num: null,
+        den: null,
+        theta: null
+      }
+    ];
+
+    // =========================================================================
+    // 2. UYGULAMA DURUMU (STATE)
+    // =========================================================================
+    const state = {
+      primaryMode: 'math',     // 'math' | 'field'
+      fieldSubMode: 'closed',  // 'closed' | 'fopdt'
+      activePresetId: 'std3',
+
+      // Aktif Plant modeli: Gp(s) = (num(s) / den(s)) * e^(-theta * s)
+      plant: {
+        num: [1],
+        den: [1, 3, 3, 1],
+        theta: 0,
+        // FOPDT meta verisi (eğer sistem saf 1. derece + ölü zamansa veya FOPDT modundaysa)
+        isFopdt: false,
+        K: 2.0,
+        tau: 5.0,
+        lambda: 1.2
+      },
+
+      // Hesaplanan kritik sınırlar
+      stabilityBoundary: {
+        ku: 8.0,
+        wu: Math.sqrt(3),
+        pu: (2 * Math.PI) / Math.sqrt(3)
+      },
+
+      // PID Kontrolcü (ISA Formu)
+      pid: {
+        kp: 3.6,
+        ti: 7.980717,
+        td: 0.575809,
+        iActive: true,
+        dActive: true
+      },
+
+      // Simülasyon Ayarları
+      sim: {
+        disturbance: false,
+        autoTsim: true,
+        tSim: 25.0
+      },
+
+      // Dinamik Slider Sınırları
+      sliderMax: {
+        kp: 75,
+        ti: 75,
+        td: 20
+      }
+    };
+
+    const DERIV_FILTER_N = 15;
+    const KEYBOARD_MAX = 10000;
+
+    // =========================================================================
+    // 3. KOMPLEKS SAYI & POLİNOM ARİTMETİĞİ + DURAND-KERNER KÖK BULUCU
+    // =========================================================================
+    class Complex {
+      constructor(re, im = 0) { this.re = re; this.im = im; }
+      add(c) { return new Complex(this.re + c.re, this.im + c.im); }
+      sub(c) { return new Complex(this.re - c.re, this.im - c.im); }
+      mul(c) { return new Complex(this.re * c.re - this.im * c.im, this.re * c.im + this.im * c.re); }
+      div(c) {
+        const d = c.re * c.re + c.im * c.im || 1e-28;
+        return new Complex((this.re * c.re + this.im * c.im) / d, (this.im * c.re - this.re * c.im) / d);
+      }
+      scale(k) { return new Complex(this.re * k, this.im * k); }
+      abs() { return Math.hypot(this.re, this.im); }
+      arg() { return Math.atan2(this.im, this.re); }
+    }
+
+    function polyEval(coeffs, s) {
+      let res = new Complex(0, 0);
+      for (let i = 0; i < coeffs.length; i++) {
+        res = res.mul(s).add(new Complex(coeffs[i], 0));
+      }
+      return res;
+    }
+
+    function polyMul(a, b) {
+      const res = new Array(a.length + b.length - 1).fill(0);
+      for (let i = 0; i < a.length; i++) {
+        for (let j = 0; j < b.length; j++) {
+          res[i + j] += a[i] * b[j];
+        }
+      }
+      return res;
+    }
+
+    function polyAdd(a, b) {
+      const len = Math.max(a.length, b.length);
+      const res = new Array(len).fill(0);
+      for (let i = 0; i < a.length; i++) res[len - a.length + i] += a[i];
+      for (let i = 0; i < b.length; i++) res[len - b.length + i] += b[i];
+      return res;
+    }
+
+    function trimPoly(p) {
+      const c = p.slice();
+      while (c.length > 1 && Math.abs(c[0]) < 1e-14) c.shift();
+      return c;
+    }
+
+    function findPolyRoots(rawCoeffs) {
+      let c = trimPoly(rawCoeffs);
+      const n = c.length - 1;
+      if (n <= 0) return [];
+      const lead = c[0];
+      c = c.map(v => v / lead);
+
+      if (n === 1) return [new Complex(-c[1], 0)];
+      if (n === 2) {
+        const b = c[1], d = c[2];
+        const disc = b * b - 4 * d;
+        if (disc >= 0) {
+          const sq = Math.sqrt(disc);
+          return [new Complex((-b + sq) / 2, 0), new Complex((-b - sq) / 2, 0)];
+        } else {
+          const sq = Math.sqrt(-disc);
+          return [new Complex(-b / 2, sq / 2), new Complex(-b / 2, -sq / 2)];
+        }
+      }
+
+      // Cauchy kök sınırı
+      let maxRatio = 0;
+      for (let i = 1; i < c.length; i++) maxRatio = Math.max(maxRatio, Math.abs(c[i]));
+      const radius = Math.min(80, Math.max(1.2, 1 + Math.pow(maxRatio, 1 / n)));
+
+      const roots = [];
+      for (let i = 0; i < n; i++) {
+        const angle = (2 * Math.PI * i) / n + 0.271828;
+        roots.push(new Complex(radius * Math.cos(angle), radius * Math.sin(angle)));
+      }
+
+      for (let iter = 0; iter < 250; iter++) {
+        let maxDelta = 0;
+        for (let i = 0; i < n; i++) {
+          const pVal = polyEval(c, roots[i]);
+          let denom = new Complex(1, 0);
+          for (let j = 0; j < n; j++) {
+            if (i !== j) {
+              const diff = roots[i].sub(roots[j]);
+              denom = denom.mul(diff.abs() < 1e-14 ? new Complex(1e-14, 1e-14) : diff);
+            }
+          }
+          const delta = pVal.div(denom);
+          roots[i] = roots[i].sub(delta);
+          maxDelta = Math.max(maxDelta, delta.abs());
+        }
+        if (maxDelta < 1e-11) break;
+      }
+
+      return roots
+        .map(r => new Complex(r.re, Math.abs(r.im) < 1e-6 ? 0 : r.im))
+        .sort((a, b) => b.re - a.re || b.im - a.im);
+    }
+
+    // =========================================================================
+    // 4. PLANT FREKANS DEĞERLENDİRME & EXACT Ku, ωu, Pu ÇÖZÜCÜ
+    // =========================================================================
+    function evalPlantComplex(w, plant = state.plant) {
+      const jw = new Complex(0, w);
+      const nVal = polyEval(plant.num, jw);
+      const dVal = polyEval(plant.den, jw);
+      const base = nVal.div(dVal);
+      if (plant.theta > 0) {
+        const delay = new Complex(Math.cos(-w * plant.theta), Math.sin(-w * plant.theta));
+        return base.mul(delay);
+      }
+      return base;
+    }
+
+    // Sürekli (unwrapped) faz hesabı için yardımcı: bir başlangıç gridi üzerinden tarama + ikiye bölme (bisection)
+    function computePlantStabilityBoundary(plant = state.plant) {
+      const wMin = 1e-4;
+      const wMax = 1e4;
+      const N = 2400;
+
+      // DC işareti pozitifse başlangıç fazı ~0, negatifse ~-180
+      let prevW = wMin;
+      let prevG = evalPlantComplex(prevW, plant);
+      // Başlangıçta çok düşük frekansta açıyı [-180, 180] aralığında al (ölü zaman katkısını ayrıca ekle)
+      const baseEval = (w) => {
+        const jw = new Complex(0, w);
+        return polyEval(plant.num, jw).div(polyEval(plant.den, jw));
+      };
+
+      let prevBaseAng = baseEval(wMin).arg(); // radyan
+      let unwrappedBase = prevBaseAng;
+      let prevTotalDeg = (unwrappedBase - wMin * plant.theta) * (180 / Math.PI);
+
+      // Eğer DC kazancı pozitif ve payda orijinde integral içermiyorsa başlangıç fazı 0 civarıdır
+      let bracket = null;
+
+      for (let i = 1; i <= N; i++) {
+        const w = wMin * Math.pow(wMax / wMin, i / N);
+        const curBaseAng = baseEval(w).arg();
+        let diff = curBaseAng - prevBaseAng;
+        while (diff > Math.PI) diff -= 2 * Math.PI;
+        while (diff < -Math.PI) diff += 2 * Math.PI;
+        unwrappedBase += diff;
+        prevBaseAng = curBaseAng;
+
+        const curTotalDeg = (unwrappedBase - w * plant.theta) * (180 / Math.PI);
+
+        // -180 derece geçişini yakala (yukarıdan aşağı)
+        if (prevTotalDeg > -180 && curTotalDeg <= -180) {
+          bracket = { wLo: prevW, wHi: w, baseLo: unwrappedBase - diff, baseHi: unwrappedBase };
+          break;
+        }
+        prevW = w;
+        prevTotalDeg = curTotalDeg;
+      }
+
+      if (!bracket) {
+        return { ku: Infinity, wu: null, pu: null };
+      }
+
+      // 45 iterasyon Bisection ile yüksek hassasiyetli ωu çözümü
+      let lo = bracket.wLo;
+      let hi = bracket.wHi;
+      const phaseAt = (w) => {
+        // Dar aralıkta unwrappedBase'e en yakın 2π katını seç
+        const raw = baseEval(w).arg();
+        const k = Math.round((bracket.baseLo - raw) / (2 * Math.PI));
+        const contBase = raw + k * 2 * Math.PI;
+        return (contBase - w * plant.theta) * (180 / Math.PI);
+      };
+
+      for (let iter = 0; iter < 45; iter++) {
+        const mid = 0.5 * (lo + hi);
+        if (phaseAt(mid) > -180) lo = mid;
+        else hi = mid;
+      }
+
+      const wu = 0.5 * (lo + hi);
+      const pu = (2 * Math.PI) / wu;
+      const magAtWu = evalPlantComplex(wu, plant).abs();
+      const ku = magAtWu > 1e-14 ? (1.0 / magAtWu) : Infinity;
+
+      return { ku, wu, pu };
+    }
+
+    // =========================================================================
+    // 5. KAPALI ÇEVRİM KUTUP & SIFIR HESABI (PADÉ 2,2 DESTEKLİ)
+    // =========================================================================
+    function computePolesAndZeros() {
+      const { num, den, theta } = state.plant;
+      const { kp, ti, td, iActive, dActive } = state.pid;
+      const tdEff = dActive ? td : 0;
+
+      let nEff = num.slice();
+      let dEff = den.slice();
+      const usesPade = theta > 1e-6;
+
+      if (usesPade) {
+        // 2. derece Padé yaklaşımı: e^(-θs) ≈ ((θ²/12)s² - (θ/2)s + 1) / ((θ²/12)s² + (θ/2)s + 1)
+        const c2 = (theta * theta) / 12.0;
+        const c1 = theta / 2.0;
+        const padeNum = [c2, -c1, 1];
+        const padeDen = [c2, c1, 1];
+        nEff = polyMul(nEff, padeNum);
+        dEff = polyMul(dEff, padeDen);
+      }
+
+      // PID: C(s) = Cnum(s) / Cden(s)
+      let cNum, cDen;
+      if (iActive) {
+        cDen = [ti, 0];
+        cNum = [kp * ti * tdEff, kp * ti, kp];
+      } else {
+        cDen = [1];
+        cNum = [kp * tdEff, kp];
+      }
+
+      const charPoly = polyAdd(polyMul(cDen, dEff), polyMul(cNum, nEff));
+      const poles = findPolyRoots(charPoly);
+
+      // Açık çevrim sıfırları (PID sıfırları + Plant sıfırları)
+      const pidZeros = findPolyRoots(cNum);
+      const plantZeros = findPolyRoots(num);
+      const zeros = [...pidZeros, ...plantZeros];
+
+      return { poles, zeros, usesPade };
+    }
+
+    // =========================================================================
+    // 6. BODE DİYAGRAMI (OTOMATİK FREKANS ARALIĞI + TAM ÖLÜ ZAMAN FAZI)
+    // =========================================================================
+    function computeBode() {
+      const { kp, ti, td, iActive, dActive } = state.pid;
+      const tdEff = dActive ? td : 0;
+      const wu = state.stabilityBoundary.wu;
+
+      // Frekans aralığını sistemin karakteristiğine göre merkezle
+      let centerW = wu && Number.isFinite(wu) ? wu : 1.0;
+      const logCenter = Math.round(Math.log10(Math.max(1e-3, Math.min(1e3, centerW))));
+      const logMin = logCenter - 2;
+      const logMax = logCenter + 2;
+      const wMin = Math.pow(10, logMin);
+      const wMax = Math.pow(10, logMax);
+
+      const steps = 500;
+      const freqs = [];
+      const magDb = [];
+      const phaseDeg = [];
+
+      const basePlantEval = (w) => {
+        const jw = new Complex(0, w);
+        return polyEval(state.plant.num, jw).div(polyEval(state.plant.den, jw));
+      };
+
+      let prevPlantAng = basePlantEval(wMin).arg();
+      let unwrappedPlant = prevPlantAng;
+
+      let pm = null, wgc = null;
+      let gmDb = null, gmLin = null, wpc = null;
+
+      for (let i = 0; i <= steps; i++) {
+        const w = wMin * Math.pow(wMax / wMin, i / steps);
+
+        // C(jw)
+        const imagC = (tdEff * w) - (iActive ? 1 / (ti * w) : 0);
+        const C = new Complex(kp, kp * imagC);
+        const phaseC = Math.atan2(imagC, 1) * (180 / Math.PI);
+
+        // Gp(jw)
+        const Gbase = basePlantEval(w);
+        const curAng = Gbase.arg();
+        let diff = curAng - prevPlantAng;
+        while (diff > Math.PI) diff -= 2 * Math.PI;
+        while (diff < -Math.PI) diff += 2 * Math.PI;
+        unwrappedPlant += diff;
+        prevPlantAng = curAng;
+
+        const phaseG = (unwrappedPlant - w * state.plant.theta) * (180 / Math.PI);
+        const mag = C.abs() * Gbase.abs();
+        const db = 20 * Math.log10(Math.max(mag, 1e-14));
+        const totalPhase = phaseC + phaseG;
+
+        freqs.push(w);
+        magDb.push(db);
+        phaseDeg.push(totalPhase);
+
+        // 0 dB geçişi (Gain Crossover -> PM)
+        if (i > 0 && ((magDb[i - 1] >= 0 && db < 0) || (magDb[i - 1] <= 0 && db > 0))) {
+          const frac = (0 - magDb[i - 1]) / (db - magDb[i - 1]);
+          wgc = freqs[i - 1] * Math.pow(w / freqs[i - 1], frac);
+          const phAtCross = phaseDeg[i - 1] + frac * (totalPhase - phaseDeg[i - 1]);
+          pm = 180 + phAtCross;
+        }
+
+        // -180° geçişi (Phase Crossover -> GM)
+        if (i > 0 && ((phaseDeg[i - 1] >= -180 && totalPhase < -180) || (phaseDeg[i - 1] <= -180 && totalPhase > -180))) {
+          const frac = (-180 - phaseDeg[i - 1]) / (totalPhase - phaseDeg[i - 1]);
+          wpc = freqs[i - 1] * Math.pow(w / freqs[i - 1], frac);
+          const dbAtCross = magDb[i - 1] + frac * (db - magDb[i - 1]);
+          gmDb = -dbAtCross;
+          gmLin = Math.pow(10, gmDb / 20);
+        }
+      }
+
+      return { freqs, magDb, phaseDeg, logMin, logMax, pm, wgc, gmDb, gmLin, wpc };
+    }
+
+    // =========================================================================
+    // 7. ZAMAN CEVABI SİMÜLASYONU (GENEL DURUM UZAYI RK4 + RING BUFFER)
+    // =========================================================================
+    function getAutoTsim() {
+      const pu = state.stabilityBoundary.pu;
+      if (state.plant.isFopdt) {
+        return Math.max(10, Math.min(250, Math.round((state.plant.tau * 6 + state.plant.theta * 6) * 2) / 2));
+      }
+      if (pu && Number.isFinite(pu)) {
+        return Math.max(6, Math.min(250, Math.round(pu * 7 * 2) / 2));
+      }
+      return 25.0;
+    }
+
+    function simulateStepResponse() {
+      const { num, den, theta } = state.plant;
+      const { kp, ti, td, iActive, dActive } = state.pid;
+      const tdEff = dActive ? td : 0;
+
+      const tMax = state.sim.autoTsim ? getAutoTsim() : Math.max(1, state.sim.tSim);
+      if (state.sim.autoTsim) {
+        state.sim.tSim = tMax;
+        document.getElementById('tsimInput').value = tMax.toFixed(1);
+      }
+
+      // Paydayı normalize et: s^n + a1*s^(n-1) + ... + an
+      const dTrim = trimPoly(den);
+      const n = dTrim.length - 1;
+      const lead = dTrim[0];
+      const a = dTrim.map(v => v / lead); // a[0] = 1, a[1..n]
+
+      // Payı n+1 uzunluğuna hizala: b0*s^n + b1*s^(n-1) + ... + bn
+      const nTrim = trimPoly(num).map(v => v / lead);
+      const b = new Array(n + 1).fill(0);
+      for (let i = 0; i < nTrim.length; i++) {
+        b[n + 1 - nTrim.length + i] = nTrim[i];
+      }
+
+      // Adım büyüklüğü (kararlılık ve hız dengesi)
+      let steps = 2500;
+      if (kp > 30 || (iActive && ti < 0.15) || theta > 0) steps = 4000;
+      const dt = tMax / steps;
+
+      // Pratik türev filtresi zaman sabiti (N = 15, RK4 kararlılığı için alt sınır korumalı)
+      const tfRaw = tdEff > 1e-9 ? tdEff / DERIV_FILTER_N : 0;
+      const tf = tfRaw > 0 ? Math.max(tfRaw, 2.5 * dt) : 0;
+
+      // Ölü zaman için Ring Buffer
+      const delaySteps = theta > 1e-6 ? Math.max(1, Math.round(theta / dt)) : 0;
+      const delayBuf = delaySteps > 0 ? new Float64Array(delaySteps) : null;
+      let bufIdx = 0;
+
+      // Durum vektörü: x[0..n-1] = plant durumları (Controllable Canonical)
+      const x = new Float64Array(Math.max(1, n));
+      let intE = 0;
+      let ef = 0;
+
+      const timeArr = [];
+      const yArr = [];
+      const stride = Math.max(1, Math.floor(steps / 1000));
+
+      const computeY = (st, uDel) => {
+        if (n === 0) return b[0] * uDel;
+        let y = b[0] * uDel;
+        for (let k = 0; k < n; k++) {
+          // k=0 -> x_0 (en düşük türev), katsayısı (b_n - b_0 * a_n)
+          const idx = n - k;
+          y += (b[idx] - b[0] * a[idx]) * st[k];
+        }
+        return y;
+      };
+
+      const plantDeriv = (st, uDel, out) => {
+        if (n === 0) return;
+        for (let k = 0; k < n - 1; k++) {
+          out[k] = st[k + 1];
+        }
+        let acc = uDel;
+        for (let k = 0; k < n; k++) {
+          acc -= a[n - k] * st[k];
+        }
+        out[n - 1] = acc;
+      };
+
+      const k1 = new Float64Array(n);
+      const k2 = new Float64Array(n);
+      const k3 = new Float64Array(n);
+      const k4 = new Float64Array(n);
+      const tmp = new Float64Array(n);
+
+      let maxY = -Infinity;
+      let diverged = false;
+      const CLAMP_Y = 8.0;
+      const distTime = tMax * 0.5;
+
+      for (let s = 0; s <= steps; s++) {
+        const t = s * dt;
+        const uDel = delayBuf ? delayBuf[bufIdx] : null;
+
+        // Mevcut çıkış ve hata (b0=0 olduğu durumlarda uDel'den bağımsız; b0!=0 ise mevcut uDel ile)
+        const currentUDel = delayBuf ? delayBuf[bufIdx] : 0;
+        const y = computeY(x, currentUDel);
+
+        if (!Number.isFinite(y) || Math.abs(y) > CLAMP_Y) {
+          diverged = true;
+          timeArr.push(t);
+          yArr.push(Math.max(-CLAMP_Y, Math.min(CLAMP_Y, Number.isFinite(y) ? y : CLAMP_Y)));
+          break;
+        }
+
+        // Bozucu etkiden önceki tepe aşımı hesapla (eğer bozucu açıksa sadece ilk yarıdaki aşımı esas al)
+        if (!state.sim.disturbance || t < distTime) {
+          if (y > maxY) maxY = y;
+        }
+
+        if (s % stride === 0 || s === steps) {
+          timeArr.push(t);
+          yArr.push(y);
+        }
+
+        // PID kontrol sinyali
+        const e = 1.0 - y;
+        const uP = kp * e;
+        const uI = iActive ? (kp / ti) * intE : 0;
+        const uD = (tdEff > 1e-9 && tf > 0) ? kp * tdEff * ((e - ef) / tf) : 0;
+        const loadDist = (state.sim.disturbance && t >= distTime) ? -0.20 : 0.0;
+        const uTotal = Math.max(-5e4, Math.min(5e4, uP + uI + uD + loadDist));
+
+        // Gecikmeli girişi belirle ve ring buffer'ı güncelle
+        let uPlant = uTotal;
+        if (delayBuf) {
+          uPlant = delayBuf[bufIdx];
+          delayBuf[bufIdx] = uTotal;
+          bufIdx = (bufIdx + 1) % delaySteps;
+        }
+
+        // Plant durumlarını RK4 ile ilerlet
+        if (n > 0) {
+          plantDeriv(x, uPlant, k1);
+          for (let i = 0; i < n; i++) tmp[i] = x[i] + 0.5 * dt * k1[i];
+          plantDeriv(tmp, uPlant, k2);
+          for (let i = 0; i < n; i++) tmp[i] = x[i] + 0.5 * dt * k2[i];
+          plantDeriv(tmp, uPlant, k3);
+          for (let i = 0; i < n; i++) tmp[i] = x[i] + dt * k3[i];
+          plantDeriv(tmp, uPlant, k4);
+          for (let i = 0; i < n; i++) {
+            x[i] += (dt / 6) * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]);
+          }
+        }
+
+        // İntegral ve Türev filtresi güncellemesi (trapezoidal / eksponansiyel)
+        if (iActive) intE += e * dt;
+        if (tdEff > 1e-9 && tf > 0) {
+          const alphaF = Math.exp(-dt / tf);
+          ef = alphaF * ef + (1 - alphaF) * e;
+        }
+      }
+
+      // DC kazancı ve teorik kalıcı durum değeri
+      const dcGain = a[n] !== 0 ? (b[n] / a[n]) : Infinity;
+      const yTargetSS = iActive ? 1.0 : (Number.isFinite(dcGain) ? (kp * dcGain) / (1 + kp * dcGain) : 1.0);
+      const yFinal = yArr[yArr.length - 1];
+      const ess = Math.abs(1.0 - yFinal);
+      const overshoot = (!diverged && maxY > yTargetSS && yTargetSS > 0.01)
+        ? ((maxY - yTargetSS) / yTargetSS) * 100
+        : 0;
+
+      // Yükselme Süresi (%10 -> %90)
+      let t10 = null, t90 = null;
+      if (!diverged && yTargetSS > 0.05) {
+        for (let i = 0; i < yArr.length; i++) {
+          if (t10 === null && yArr[i] >= 0.1 * yTargetSS) t10 = timeArr[i];
+          if (t90 === null && yArr[i] >= 0.9 * yTargetSS) { t90 = timeArr[i]; break; }
+        }
+      }
+      const riseTime = (t10 !== null && t90 !== null) ? (t90 - t10) : null;
+
+      // Yerleşme Süresi (±%2 bandı, bozucu açıksa ilk yarıda ölç)
+      let settlingTime = null;
+      if (!diverged && yTargetSS > 0.05) {
+        const checkLimitIdx = state.sim.disturbance
+          ? yArr.findIndex((_, idx) => timeArr[idx] >= distTime)
+          : yArr.length;
+        const endIdx = checkLimitIdx > 0 ? checkLimitIdx : yArr.length;
+        const band = 0.02 * yTargetSS;
+        if (Math.abs(yArr[endIdx - 1] - yTargetSS) <= band) {
+          let lastOut = -1;
+          for (let i = endIdx - 1; i >= 0; i--) {
+            if (Math.abs(yArr[i] - yTargetSS) > band) { lastOut = i; break; }
+          }
+          settlingTime = (lastOut >= 0 && lastOut + 1 < endIdx) ? timeArr[lastOut + 1] : 0;
+        }
+      }
+
+      return { timeArr, yArr, maxY, ess, overshoot, riseTime, settlingTime, diverged, tMax, distTime };
+    }
+
+    // =========================================================================
+    // 8. AYARLAMA KATSAYILARI (ZN, TL, OPEN-LOOP ZN, COHEN-COON, IMC)
+    // =========================================================================
+    function getClosedLoopMethods() {
+      const { ku, pu } = state.stabilityBoundary;
+      const valid = Number.isFinite(ku) && Number.isFinite(pu) && pu > 0;
+      return [
+        {
+          id: 'zn_p',
+          name: 'Ziegler-Nichols (P)',
+          badgeClass: 'text-amber-300',
+          formula: 'Kp = 0.50·Ku | Ti = ∞ | Td = 0',
+          valid,
+          kp: valid ? 0.50 * ku : null,
+          ti: null,
+          td: 0,
+          iActive: false,
+          dActive: false
+        },
+        {
+          id: 'zn_pi',
+          name: 'Ziegler-Nichols (PI)',
+          badgeClass: 'text-amber-300',
+          formula: 'Kp = 0.45·Ku | Ti = Pu/1.2 | Td = 0',
+          valid,
+          kp: valid ? 0.45 * ku : null,
+          ti: valid ? pu / 1.2 : null,
+          td: 0,
+          iActive: true,
+          dActive: false
+        },
+        {
+          id: 'zn_pid',
+          name: 'Ziegler-Nichols (PID)',
+          badgeClass: 'text-amber-300',
+          formula: 'Kp = 0.60·Ku | Ti = Pu/2 | Td = Pu/8',
+          valid,
+          kp: valid ? 0.60 * ku : null,
+          ti: valid ? pu / 2.0 : null,
+          td: valid ? pu / 8.0 : null,
+          iActive: true,
+          dActive: true
+        },
+        {
+          id: 'tl_pi',
+          name: 'Tyreus-Luyben (PI)',
+          badgeClass: 'text-cyan-300',
+          formula: 'Kp = 0.31·Ku | Ti = 2.2·Pu | Td = 0',
+          valid,
+          kp: valid ? 0.31 * ku : null,
+          ti: valid ? 2.2 * pu : null,
+          td: 0,
+          iActive: true,
+          dActive: false
+        },
+        {
+          id: 'tl_pid',
+          name: 'Tyreus-Luyben (PID)',
+          badgeClass: 'text-cyan-300',
+          formula: 'Kp = 0.45·Ku | Ti = 2.2·Pu | Td = Pu/6.3',
+          valid,
+          kp: valid ? 0.45 * ku : null,
+          ti: valid ? 2.2 * pu : null,
+          td: valid ? pu / 6.3 : null,
+          iActive: true,
+          dActive: true
+        }
+      ];
+    }
+
+    function getOpenLoopFopdtMethods() {
+      const p = state.plant;
+      const valid = p.isFopdt && p.K > 0 && p.tau > 0 && p.theta > 0;
+      const K = p.K, tau = p.tau, th = p.theta, lam = Math.max(1e-6, p.lambda);
+      const r = valid ? th / tau : 0;
+
+      return [
+        {
+          id: 'ol_zn_pi',
+          name: 'Açık Çevrim ZN (PI)',
+          badgeClass: 'text-amber-300',
+          formula: 'Kp = 0.9τ/(Kθ) | Ti = 3.33θ',
+          valid,
+          kp: valid ? (0.9 * tau) / (K * th) : null,
+          ti: valid ? 3.333333 * th : null,
+          td: 0,
+          iActive: true,
+          dActive: false
+        },
+        {
+          id: 'ol_zn_pid',
+          name: 'Açık Çevrim ZN (PID)',
+          badgeClass: 'text-amber-300',
+          formula: 'Kp = 1.2τ/(Kθ) | Ti = 2θ | Td = 0.5θ',
+          valid,
+          kp: valid ? (1.2 * tau) / (K * th) : null,
+          ti: valid ? 2.0 * th : null,
+          td: valid ? 0.5 * th : null,
+          iActive: true,
+          dActive: true
+        },
+        {
+          id: 'cc_pi',
+          name: 'Cohen-Coon (PI)',
+          badgeClass: 'text-sky-300',
+          formula: 'Kp=(τ/Kθ)(0.9+θ/12τ) | Ti=θ(30+3r)/(9+20r)',
+          valid,
+          kp: valid ? (tau / (K * th)) * (0.9 + r / 12) : null,
+          ti: valid ? th * ((30 + 3 * r) / (9 + 20 * r)) : null,
+          td: 0,
+          iActive: true,
+          dActive: false
+        },
+        {
+          id: 'cc_pid',
+          name: 'Cohen-Coon (PID)',
+          badgeClass: 'text-sky-300',
+          formula: 'Kp=(τ/Kθ)(4/3+r/4) | Ti=θ(32+6r)/(13+8r) | Td=4θ/(11+2r)',
+          valid,
+          kp: valid ? (tau / (K * th)) * (4 / 3 + r / 4) : null,
+          ti: valid ? th * ((32 + 6 * r) / (13 + 8 * r)) : null,
+          td: valid ? (4 * th) / (11 + 2 * r) : null,
+          iActive: true,
+          dActive: true
+        },
+        {
+          id: 'imc_pi',
+          name: 'IMC / Lambda (PI)',
+          badgeClass: 'text-emerald-300',
+          formula: 'Kp = τ / (K(λ+θ)) | Ti = τ',
+          valid,
+          kp: valid ? tau / (K * (lam + th)) : null,
+          ti: valid ? tau : null,
+          td: 0,
+          iActive: true,
+          dActive: false
+        },
+        {
+          id: 'imc_pid',
+          name: 'IMC / Lambda (PID)',
+          badgeClass: 'text-emerald-300',
+          formula: 'Kp=(τ+0.5θ)/(K(λ+0.5θ)) | Ti=τ+0.5θ | Td=τθ/(2τ+θ)',
+          valid,
+          kp: valid ? (tau + 0.5 * th) / (K * (lam + 0.5 * th)) : null,
+          ti: valid ? (tau + 0.5 * th) : null,
+          td: valid ? (tau * th) / (2 * tau + th) : null,
+          iActive: true,
+          dActive: true
+        }
+      ];
+    }
+
+    // =========================================================================
+    // 9. HIDPI CANVAS ÇİZİM FONKSİYONLARI
+    // =========================================================================
+    function prepCanvas(id) {
+      const canvas = document.getElementById(id);
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      const targetW = Math.max(1, Math.round(rect.width * dpr));
+      const targetH = Math.max(1, Math.round(rect.height * dpr));
+      if (canvas.width !== targetW || canvas.height !== targetH) {
+        canvas.width = targetW;
+        canvas.height = targetH;
+      }
+      const ctx = canvas.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      return { ctx, w: rect.width, h: rect.height };
+    }
+
+    // 1. Zaman Cevabı Grafiği
+    function drawStepChart(sim, status) {
+      const { ctx, w, h } = prepCanvas('stepCanvas');
+      ctx.clearRect(0, 0, w, h);
+
+      const pad = { top: 18, right: 16, bottom: 26, left: 40 };
+      const plotW = w - pad.left - pad.right;
+      const plotH = h - pad.top - pad.bottom;
+
+      const yMax = sim.diverged ? 3.2 : Math.min(3.5, Math.max(1.5, sim.maxY * 1.15));
+      const yMin = sim.diverged ? -1.2 : -0.25;
+
+      const toX = t => pad.left + (t / sim.tMax) * plotW;
+      const toY = y => pad.top + ((yMax - y) / (yMax - yMin)) * plotH;
+
+      // Izgara
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1;
+      ctx.font = '10px JetBrains Mono, monospace';
+      ctx.fillStyle = '#64748b';
+
+      const yStep = yMax > 2.4 ? 0.5 : 0.25;
+      for (let v = Math.ceil(yMin / yStep) * yStep; v <= yMax + 1e-6; v += yStep) {
+        const py = toY(v);
+        ctx.beginPath(); ctx.moveTo(pad.left, py); ctx.lineTo(pad.left + plotW, py); ctx.stroke();
+        if (Math.abs(v * 2 - Math.round(v * 2)) < 0.01) ctx.fillText(v.toFixed(1), 6, py + 3);
+      }
+
+      const tTicks = 5;
+      for (let i = 0; i <= tTicks; i++) {
+        const t = (sim.tMax * i) / tTicks;
+        const px = toX(t);
+        ctx.beginPath(); ctx.moveTo(px, pad.top); ctx.lineTo(px, pad.top + plotH); ctx.stroke();
+        ctx.fillText(t.toFixed(1).replace(/\.0$/, '') + 's', px - 9, h - 7);
+      }
+
+      // ±%2 yerleşme bandı
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.06)';
+      ctx.fillRect(pad.left, toY(1.02), plotW, toY(0.98) - toY(1.02));
+
+      // Bozucu Etki çizgisi
+      if (state.sim.disturbance) {
+        const dx = toX(sim.distTime);
+        ctx.save();
+        ctx.strokeStyle = 'rgba(251, 113, 133, 0.7)';
+        ctx.setLineDash([4, 3]);
+        ctx.lineWidth = 1.3;
+        ctx.beginPath(); ctx.moveTo(dx, pad.top); ctx.lineTo(dx, pad.top + plotH); ctx.stroke();
+        ctx.fillStyle = '#fda4af';
+        ctx.font = 'bold 9px Inter, sans-serif';
+        ctx.fillText('Bozucu (-20%)', dx + 4, pad.top + 12);
+        ctx.restore();
+      }
+
+      // Referans r(t) = 1
+      ctx.save();
+      ctx.strokeStyle = '#64748b';
+      ctx.setLineDash([5, 4]);
+      ctx.lineWidth = 1.25;
+      ctx.beginPath(); ctx.moveTo(pad.left, toY(1.0)); ctx.lineTo(pad.left + plotW, toY(1.0)); ctx.stroke();
+      ctx.restore();
+
+      // y(t) eğrisi
+      ctx.save();
+      ctx.beginPath(); ctx.rect(pad.left, pad.top, plotW, plotH); ctx.clip();
+      ctx.strokeStyle = status === 'UNSTABLE' ? '#fb7185' : (status === 'MARGINAL' ? '#fbbf24' : '#38bdf8');
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      for (let i = 0; i < sim.timeArr.length; i++) {
+        const px = toX(sim.timeArr[i]);
+        const py = toY(sim.yArr[i]);
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 2. Bode Diyagramı
+    function drawBodeChart(bode) {
+      const { ctx, w, h } = prepCanvas('bodeCanvas');
+      ctx.clearRect(0, 0, w, h);
+
+      const pad = { top: 14, right: 14, bottom: 24, left: 40 };
+      const plotW = w - pad.left - pad.right;
+      const gap = 14;
+      const halfH = (h - pad.top - pad.bottom - gap) / 2;
+
+      const toX = freq => pad.left + ((Math.log10(freq) - bode.logMin) / (bode.logMax - bode.logMin)) * plotW;
+
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1;
+      for (let p = bode.logMin; p <= bode.logMax; p++) {
+        const px = toX(Math.pow(10, p));
+        ctx.beginPath(); ctx.moveTo(px, pad.top); ctx.lineTo(px, pad.top + halfH); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(px, pad.top + halfH + gap); ctx.lineTo(px, pad.top + 2 * halfH + gap); ctx.stroke();
+      }
+
+      // Üst: Genlik (dB)
+      const dbMax = 50, dbMin = -60;
+      const toYDb = db => pad.top + ((dbMax - Math.max(dbMin, Math.min(dbMax, db))) / (dbMax - dbMin)) * halfH;
+
+      [40, 20, 0, -20, -40].forEach(d => {
+        const py = toYDb(d);
+        ctx.strokeStyle = d === 0 ? '#475569' : '#1e293b';
+        ctx.setLineDash(d === 0 ? [4, 3] : []);
+        ctx.beginPath(); ctx.moveTo(pad.left, py); ctx.lineTo(pad.left + plotW, py); ctx.stroke();
+      });
+      ctx.setLineDash([]);
+
+      ctx.font = '9px JetBrains Mono, monospace';
+      ctx.fillStyle = '#64748b'; ctx.fillText('+40', 6, toYDb(40) + 3);
+      ctx.fillStyle = '#38bdf8'; ctx.fillText('0dB', 6, toYDb(0) + 3);
+      ctx.fillStyle = '#64748b'; ctx.fillText('-40', 6, toYDb(-40) + 3);
+
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      bode.freqs.forEach((f, i) => {
+        const px = toX(f), py = toYDb(bode.magDb[i]);
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      });
+      ctx.stroke();
+
+      if (bode.wpc && bode.gmDb !== null) {
+        const xPc = toX(bode.wpc);
+        const y0 = toYDb(0);
+        const yM = toYDb(-bode.gmDb);
+        ctx.strokeStyle = bode.gmDb >= 0 ? '#38bdf8' : '#fb7185';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(xPc, y0); ctx.lineTo(xPc, yM); ctx.stroke();
+        ctx.fillStyle = bode.gmDb >= 0 ? '#38bdf8' : '#fb7185';
+        ctx.beginPath(); ctx.arc(xPc, yM, 3.5, 0, Math.PI * 2); ctx.fill();
+      }
+
+      // Alt: Faz (°)
+      const phTop = pad.top + halfH + gap;
+      const phMax = 0, phMin = -270;
+      const toYPh = deg => phTop + ((phMax - Math.max(phMin, Math.min(phMax, deg))) / (phMax - phMin)) * halfH;
+
+      [-90, -180, -270].forEach(deg => {
+        const py = toYPh(deg);
+        ctx.strokeStyle = deg === -180 ? '#fb7185' : '#1e293b';
+        ctx.setLineDash(deg === -180 ? [4, 3] : []);
+        ctx.beginPath(); ctx.moveTo(pad.left, py); ctx.lineTo(pad.left + plotW, py); ctx.stroke();
+      });
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = '#64748b'; ctx.fillText('-90°', 6, toYPh(-90) + 3);
+      ctx.fillStyle = '#fb7185'; ctx.fillText('-180°', 2, toYPh(-180) + 3);
+      ctx.fillStyle = '#64748b'; ctx.fillText('-270°', 2, toYPh(-270) + 3);
+
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      bode.freqs.forEach((f, i) => {
+        const px = toX(f), py = toYPh(bode.phaseDeg[i]);
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      });
+      ctx.stroke();
+
+      if (bode.wgc && bode.pm !== null) {
+        const xGc = toX(bode.wgc);
+        const yCrit = toYPh(-180);
+        const yP = toYPh(-180 + bode.pm);
+        ctx.strokeStyle = bode.pm >= 0 ? '#34d399' : '#fb7185';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(xGc, yCrit); ctx.lineTo(xGc, yP); ctx.stroke();
+        ctx.fillStyle = bode.pm >= 0 ? '#34d399' : '#fb7185';
+        ctx.beginPath(); ctx.arc(xGc, yP, 3.5, 0, Math.PI * 2); ctx.fill();
+      }
+
+      // Frekans ekseni etiketleri
+      ctx.fillStyle = '#64748b';
+      for (let p = bode.logMin; p <= bode.logMax; p++) {
+        const val = Math.pow(10, p);
+        const px = toX(val);
+        const lbl = val >= 1 ? String(val) : val.toFixed(Math.abs(p));
+        ctx.fillText(lbl, px - 7, h - 6);
+      }
+      ctx.fillText('rad/s', w - 34, h - 6);
+    }
+
+    // 3. s-Düzlemi Kutup-Sıfır Haritası
+    function drawSPlane(pz) {
+      const { ctx, w, h } = prepCanvas('splaneCanvas');
+      ctx.clearRect(0, 0, w, h);
+
+      const pad = { top: 18, right: 16, bottom: 26, left: 32 };
+      const plotW = w - pad.left - pad.right;
+      const plotH = h - pad.top - pad.bottom;
+
+      let maxRe = 3.5, maxIm = 3.0;
+      pz.poles.forEach(p => {
+        maxRe = Math.max(maxRe, Math.abs(p.re) * 1.25);
+        maxIm = Math.max(maxIm, Math.abs(p.im) * 1.25);
+      });
+      maxRe = Math.min(25, maxRe);
+      maxIm = Math.min(25, maxIm);
+
+      const reMin = -maxRe;
+      const reMax = Math.max(1.5, maxRe * 0.42);
+      const imMax = maxIm;
+      const imMin = -maxIm;
+
+      const toX = re => pad.left + ((re - reMin) / (reMax - reMin)) * plotW;
+      const toY = im => pad.top + ((imMax - im) / (imMax - imMin)) * plotH;
+      const zeroX = toX(0), zeroY = toY(0);
+
+      // LHP / RHP gölgelendirme
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.045)';
+      ctx.fillRect(pad.left, pad.top, zeroX - pad.left, plotH);
+      ctx.fillStyle = 'rgba(244, 63, 94, 0.10)';
+      ctx.fillRect(zeroX, pad.top, pad.left + plotW - zeroX, plotH);
+
+      ctx.font = 'bold 9px Inter, sans-serif';
+      ctx.fillStyle = 'rgba(52, 211, 153, 0.6)'; ctx.fillText('LHP (KARARLI)', pad.left + 6, pad.top + 13);
+      ctx.fillStyle = 'rgba(251, 113, 133, 0.75)'; ctx.fillText('RHP (KARARSIZ)', zeroX + 6, pad.top + 13);
+
+      // Izgara
+      const step = maxRe > 10 ? 5 : (maxRe > 5 ? 2 : 1);
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1;
+      ctx.font = '9px JetBrains Mono, monospace';
+      ctx.fillStyle = '#64748b';
+
+      for (let r = Math.ceil(reMin / step) * step; r <= Math.floor(reMax / step) * step; r += step) {
+        const px = toX(r);
+        ctx.beginPath(); ctx.moveTo(px, pad.top); ctx.lineTo(px, pad.top + plotH); ctx.stroke();
+        if (r !== 0) ctx.fillText(String(r), px - 5, h - 8);
+      }
+      for (let im = Math.ceil(imMin / step) * step; im <= Math.floor(imMax / step) * step; im += step) {
+        const py = toY(im);
+        ctx.beginPath(); ctx.moveTo(pad.left, py); ctx.lineTo(pad.left + plotW, py); ctx.stroke();
+        if (im !== 0) ctx.fillText(im + 'j', 4, py + 3);
+      }
+
+      // Eksenler
+      ctx.strokeStyle = '#475569'; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(pad.left, zeroY); ctx.lineTo(pad.left + plotW, zeroY); ctx.stroke();
+      ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 1.7;
+      ctx.beginPath(); ctx.moveTo(zeroX, pad.top); ctx.lineTo(zeroX, pad.top + plotH); ctx.stroke();
+
+      // Sıfırlar (Yeşil O)
+      pz.zeros.forEach(z => {
+        if (z.re < reMin || z.re > reMax || z.im < imMin || z.im > imMax) return;
+        ctx.strokeStyle = '#34d399';
+        ctx.lineWidth = 2.1;
+        ctx.beginPath(); ctx.arc(toX(z.re), toY(z.im), 5.2, 0, Math.PI * 2); ctx.stroke();
+      });
+
+      // Kutuplar (X)
+      pz.poles.forEach(p => {
+        const px = toX(Math.max(reMin + 0.08, Math.min(reMax - 0.08, p.re)));
+        const py = toY(Math.max(imMin + 0.08, Math.min(imMax - 0.08, p.im)));
+        const isUnst = p.re > 1e-4;
+        const isMarg = Math.abs(p.re) <= 1e-4;
+        ctx.strokeStyle = isUnst ? '#fb7185' : (isMarg ? '#fbbf24' : '#38bdf8');
+        ctx.lineWidth = 2.4;
+        const r = 5;
+        ctx.beginPath();
+        ctx.moveTo(px - r, py - r); ctx.lineTo(px + r, py + r);
+        ctx.moveTo(px + r, py - r); ctx.lineTo(px - r, py + r);
+        ctx.stroke();
+      });
+    }
+
+    // =========================================================================
+    // 10. FORMATLAMA & UI YARDIMCILARI
+    // =========================================================================
+    function parseLocaleNum(str) {
+      if (typeof str !== 'string') return NaN;
+      const cleaned = str.trim().replace(/,/g, '.');
+      if (!/^[+-]?(\d+\.?\d*|\.\d+)$/.test(cleaned)) return NaN;
+      return parseFloat(cleaned);
+    }
+
+    function parsePolyString(str) {
+      if (!str || !str.trim()) return null;
+      // Virgül veya boşlukla ayrılmış sayılar (ondalık ayracı olarak nokta kullanılır)
+      const tokens = str.trim().split(/[\s,;]+/).filter(Boolean);
+      const arr = [];
+      for (const tok of tokens) {
+        const v = Number(tok);
+        if (!Number.isFinite(v)) return null;
+        arr.push(v);
+      }
+      return arr.length ? trimPoly(arr) : null;
+    }
+
+    function formatPolyHtml(coeffs) {
+      const c = trimPoly(coeffs);
+      const deg = c.length - 1;
+      const parts = [];
+      for (let i = 0; i < c.length; i++) {
+        const v = c[i];
+        if (Math.abs(v) < 1e-12 && c.length > 1) continue;
+        const p = deg - i;
+        const sign = v < 0 ? ' - ' : (parts.length > 0 ? ' + ' : '');
+        const absV = Math.abs(v);
+        const numStr = (Math.abs(absV - 1) < 1e-6 && p > 0) ? '' : Number(absV.toFixed(4)).toString();
+        const sPart = p === 0 ? '' : (p === 1 ? 's' : `s<sup>${p}</sup>`);
+        parts.push(`${sign}${numStr}${sPart}`);
+      }
+      return parts.length ? parts.join('') : '0';
+    }
+
+    function updatePlantReadoutAndSliders() {
+      const p = state.plant;
+      const sb = computePlantStabilityBoundary(p);
+      state.stabilityBoundary = sb;
+
+      // Formatlı transfer fonksiyonu
+      const numHtml = formatPolyHtml(p.num);
+      const denHtml = formatPolyHtml(p.den);
+      const delayHtml = p.theta > 1e-6 ? ` · e<sup>-${p.theta.toFixed(4).replace(/\.?0+$/, '')}s</sup>` : '';
+      document.getElementById('livePlantEquation').innerHTML =
+        `G<sub>p</sub>(s) = (${numHtml}) / (${denHtml})${delayHtml}`;
+
+      const kuText = Number.isFinite(sb.ku) ? sb.ku.toFixed(6) : '∞';
+      const wuText = sb.wu !== null ? sb.wu.toFixed(6) : '—';
+      const puText = sb.pu !== null ? sb.pu.toFixed(6) : '∞';
+
+      document.getElementById('liveKu').textContent = kuText;
+      document.getElementById('liveWu').textContent = wuText;
+      document.getElementById('livePu').textContent = puText;
+      document.getElementById('headerPlantBadge').innerHTML =
+        `K<sub>u</sub> = ${kuText} | P<sub>u</sub> = ${puText}${sb.pu !== null ? ' s' : ''}`;
+
+      // Slider sınırlarını aktif sisteme göre adapte et
+      const kpMax = Number.isFinite(sb.ku) ? Math.min(KEYBOARD_MAX, Math.max(75, Math.ceil(sb.ku * 2.5))) : 75;
+      const refTime = sb.pu && Number.isFinite(sb.pu) ? sb.pu : (p.isFopdt ? p.tau : 7.5);
+      const tiMax = Math.min(KEYBOARD_MAX, Math.max(75, Math.ceil(refTime * 10)));
+      const tdMax = Math.min(KEYBOARD_MAX, Math.max(20, Math.ceil(refTime * 2)));
+
+      state.sliderMax = { kp: kpMax, ti: tiMax, td: tdMax };
+      document.getElementById('kpSlider').max = kpMax;
+      document.getElementById('tiSlider').max = tiMax;
+      document.getElementById('tdSlider').max = tdMax;
+      document.getElementById('kpMaxLabel').textContent = kpMax.toFixed(2);
+      document.getElementById('tiMaxLabel').textContent = tiMax.toFixed(2) + ' s';
+      document.getElementById('tdMaxLabel').textContent = tdMax.toFixed(2) + ' s';
+
+      renderQuickTuneButtons();
+      renderTuningDrawerTables();
+    }
+
+    // =========================================================================
+    // 11. HIZLI AYAR BUTONLARI & KATSAYI TABLOSU ÇEKMECESİ
+    // =========================================================================
+    function renderQuickTuneButtons() {
+      const bar = document.getElementById('quickTuneBar');
+      const sb = state.stabilityBoundary;
+      const hasKu = Number.isFinite(sb.ku) && Number.isFinite(sb.pu);
+
+      let html = `<span class="text-[11px] uppercase tracking-wider font-semibold text-slate-400 mr-1">Hızlı Ayar:</span>`;
+
+      if (hasKu) {
+        html += `
+          <button type="button" onclick="applyQuickMethod('marginal')"
+            class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/35 transition cursor-pointer">
+            Saf P (K<sub>u</sub> Sınır)
+          </button>
+          <button type="button" onclick="applyQuickMethod('zn_pi')"
+            class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-amber-200 border border-slate-700 transition cursor-pointer">
+            ZN-PI
+          </button>
+          <button type="button" onclick="applyQuickMethod('zn_pid')"
+            class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/35 transition cursor-pointer">
+            ZN-PID
+          </button>
+          <button type="button" onclick="applyQuickMethod('tl_pi')"
+            class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-emerald-200 border border-slate-700 transition cursor-pointer">
+            TL-PI
+          </button>
+          <button type="button" onclick="applyQuickMethod('tl_pid')"
+            class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/35 transition cursor-pointer">
+            TL-PID
+          </button>
+        `;
+      } else {
+        html += `<span class="text-xs text-slate-500 italic">Bu sistemde K<sub>u</sub> = ∞ (Kapalı çevrim ZN/TL uygulanamaz)</span>`;
+      }
+
+      if (state.plant.isFopdt && state.plant.theta > 0) {
+        html += `
+          <span class="text-slate-700 mx-0.5">|</span>
+          <button type="button" onclick="applyQuickMethod('ol_zn_pid')"
+            class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition cursor-pointer">
+            Açık Çevrim ZN
+          </button>
+          <button type="button" onclick="applyQuickMethod('cc_pid')"
+            class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/35 transition cursor-pointer">
+            Cohen-Coon
+          </button>
+          <button type="button" onclick="applyQuickMethod('imc_pid')"
+            class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/35 transition cursor-pointer">
+            IMC
+          </button>
+        `;
+      }
+
+      bar.innerHTML = html;
+    }
+
+    function applyMethodObject(m) {
+      if (!m || !m.valid) return;
+      state.pid.kp = +Math.max(0.000001, Math.min(KEYBOARD_MAX, m.kp)).toFixed(6);
+      state.pid.iActive = m.iActive;
+      if (m.iActive && m.ti !== null) {
+        state.pid.ti = +Math.max(0.000001, Math.min(KEYBOARD_MAX, m.ti)).toFixed(6);
+      }
+      state.pid.dActive = m.dActive;
+      state.pid.td = +Math.max(0, Math.min(KEYBOARD_MAX, m.td || 0)).toFixed(6);
+      syncPidInputs(true);
+      updateSimulationAndCharts();
+    }
+
+    function applyQuickMethod(id) {
+      if (id === 'marginal') {
+        const ku = state.stabilityBoundary.ku;
+        if (!Number.isFinite(ku)) return;
+        state.pid.kp = +Math.min(KEYBOARD_MAX, ku).toFixed(6);
+        state.pid.iActive = false;
+        state.pid.dActive = false;
+        state.pid.td = 0;
+        syncPidInputs(true);
+        updateSimulationAndCharts();
+        return;
+      }
+      const all = [...getClosedLoopMethods(), ...getOpenLoopFopdtMethods()];
+      const found = all.find(x => x.id === id);
+      if (found) applyMethodObject(found);
+    }
+
+    function renderTuningDrawerTables() {
+      const sb = state.stabilityBoundary;
+      const p = state.plant;
+
+      document.getElementById('drawerKuPuTag').textContent = Number.isFinite(sb.ku)
+        ? `Ku = ${sb.ku.toFixed(6)} | Pu = ${sb.pu.toFixed(6)} s`
+        : 'Ku = ∞ (Sistem -180° faza ulaşmıyor)';
+
+      document.getElementById('drawerFopdtTag').textContent = p.isFopdt
+        ? `K = ${p.K.toFixed(4)} | τ = ${p.tau.toFixed(4)} s | θ = ${p.theta.toFixed(4)} s | λ = ${p.lambda.toFixed(4)} s`
+        : 'FOPDT değerleri için "Deneysel / Saha > Açık Çevrim FOPDT" modunu seçin';
+
+      const buildRows = (list) => list.map(m => {
+        const calcHtml = m.valid
+          ? `Kp=${m.kp.toFixed(6)} | Ti=${m.iActive ? m.ti.toFixed(6) + 's' : '∞'} | Td=${m.dActive ? m.td.toFixed(6) + 's' : '0'}`
+          : `<span class="text-slate-500 font-sans italic">Aktif model için tanımsız</span>`;
+
+        const btnHtml = m.valid
+          ? `<button type="button" onclick="applyDrawerMethod('${m.id}')"
+               class="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/35 text-cyan-300 border border-cyan-500/40 text-xs font-semibold font-sans transition cursor-pointer">
+               Uygula
+             </button>`
+          : `<span class="text-[11px] text-slate-600 font-sans">—</span>`;
+
+        return `
+          <tr class="hover:bg-slate-800/40 transition">
+            <td class="py-2.5 px-3 font-sans font-semibold ${m.badgeClass} whitespace-nowrap">${m.name}</td>
+            <td class="py-2.5 px-3 text-slate-300 text-[11px]">${m.formula}</td>
+            <td class="py-2.5 px-3 text-slate-200 text-[11px] whitespace-nowrap">${calcHtml}</td>
+            <td class="py-2.5 px-3 text-right">${btnHtml}</td>
+          </tr>
+        `;
+      }).join('');
+
+      document.getElementById('closedLoopTableBody').innerHTML = buildRows(getClosedLoopMethods());
+      document.getElementById('openLoopTableBody').innerHTML = buildRows(getOpenLoopFopdtMethods());
+    }
+
+    function applyDrawerMethod(id) {
+      applyQuickMethod(id);
+      closeTableDrawer();
+    }
+
+    // =========================================================================
+    // 12. ANA SİMÜLASYON VE ARAYÜZ GÜNCELLEME DÖNGÜSÜ
+    // =========================================================================
+    function syncPidInputs(updateFocused = true) {
+      const { kp, ti, td, iActive, dActive } = state.pid;
+      const kpIn = document.getElementById('kpInput');
+      const tiIn = document.getElementById('tiInput');
+      const tdIn = document.getElementById('tdInput');
+      const kpSl = document.getElementById('kpSlider');
+      const tiSl = document.getElementById('tiSlider');
+      const tdSl = document.getElementById('tdSlider');
+
+      kpSl.value = Math.min(state.sliderMax.kp, kp);
+      tiSl.value = Math.min(state.sliderMax.ti, ti);
+      tdSl.value = Math.min(state.sliderMax.td, td);
+
+      if (updateFocused || document.activeElement !== kpIn) kpIn.value = kp.toFixed(6);
+      if (updateFocused || document.activeElement !== tiIn) tiIn.value = ti.toFixed(6);
+      if (updateFocused || document.activeElement !== tdIn) tdIn.value = td.toFixed(6);
+
+      document.getElementById('iActiveToggle').checked = iActive;
+      document.getElementById('dActiveToggle').checked = dActive;
+      tiIn.disabled = !iActive;
+      tiSl.disabled = !iActive;
+      tdIn.disabled = !dActive;
+      tdSl.disabled = !dActive;
+
+      document.getElementById('iToggleText').textContent = iActive ? 'İntegral (I) Aktif' : 'İntegral Kapalı (Ti = ∞)';
+      document.getElementById('iToggleText').className = iActive ? 'text-[11px] font-medium text-amber-300' : 'text-[11px] font-medium text-slate-500';
+      document.getElementById('dToggleText').textContent = dActive ? 'Türev (D) Aktif' : 'Türev Kapalı (Td = 0)';
+      document.getElementById('dToggleText').className = dActive ? 'text-[11px] font-medium text-emerald-300' : 'text-[11px] font-medium text-slate-500';
+    }
+
+    function updateSimulationAndCharts() {
+      const { kp, ti, td, iActive, dActive } = state.pid;
+      const kiEq = iActive ? (kp / ti) : 0;
+      const kdEq = dActive ? (kp * td) : 0;
+
+      document.getElementById('eqKp').textContent = kp.toFixed(6);
+      document.getElementById('eqKi').textContent = kiEq.toFixed(6);
+      document.getElementById('eqKd').textContent = kdEq.toFixed(6);
+
+      const pz = computePolesAndZeros();
+      const bode = computeBode();
+      const sim = simulateStepResponse();
+
+      // Kararlılık durumu (Kutuplar + Zaman Cevabı + Bode Marjları)
+      const maxReal = pz.poles.length ? Math.max(...pz.poles.map(p => p.re)) : -1;
+      let status = 'STABLE';
+      if (sim.diverged || maxReal > 0.004 || (bode.pm !== null && bode.pm < -0.5)) {
+        status = 'UNSTABLE';
+      } else if (Math.abs(maxReal) <= 0.006 || (bode.pm !== null && Math.abs(bode.pm) <= 1.2)) {
+        status = 'MARGINAL';
+      }
+
+      // Durum rozetleri
+      const kpiStatus = document.getElementById('kpiStatus');
+      const headerStatus = document.getElementById('headerStatusText');
+      if (status === 'UNSTABLE') {
+        kpiStatus.textContent = 'KARARSIZ (UNSTABLE)';
+        kpiStatus.className = 'text-sm font-bold text-rose-400 mt-1';
+        headerStatus.textContent = 'KARARSIZ';
+        headerStatus.className = 'text-rose-400 font-semibold';
+      } else if (status === 'MARGINAL') {
+        kpiStatus.textContent = 'MARJİNAL KARARLI';
+        kpiStatus.className = 'text-sm font-bold text-amber-300 mt-1';
+        headerStatus.textContent = 'MARJİNAL KARARLI';
+        headerStatus.className = 'text-amber-300 font-semibold';
+      } else {
+        kpiStatus.textContent = 'KARARLI (STABLE)';
+        kpiStatus.className = 'text-sm font-bold text-emerald-400 mt-1';
+        headerStatus.textContent = 'KARARLI';
+        headerStatus.className = 'text-emerald-400 font-semibold';
+      }
+
+      document.getElementById('unstableBanner').classList.toggle('hidden', status !== 'UNSTABLE');
+
+      // KPI değerleri
+      document.getElementById('kpiOS').textContent = status === 'UNSTABLE' ? '∞' : '%' + sim.overshoot.toFixed(2);
+      const trStr = (status === 'UNSTABLE' || sim.riseTime === null) ? '—' : sim.riseTime.toFixed(2) + 's';
+      const tsStr = (status === 'UNSTABLE' || status === 'MARGINAL' || sim.settlingTime === null) ? '—' : sim.settlingTime.toFixed(2) + 's';
+      document.getElementById('kpiTimes').textContent = `${trStr} / ${tsStr}`;
+      document.getElementById('kpiEss').textContent = status === 'UNSTABLE'
+        ? '∞'
+        : (status === 'MARGINAL' ? 'Salınımlı' : sim.ess.toFixed(6));
+
+      // GM & PM
+      const gmEl = document.getElementById('kpiGM');
+      if (bode.gmDb !== null) {
+        gmEl.textContent = (bode.gmDb >= 0 ? '+' : '') + bode.gmDb.toFixed(2) + ' dB';
+        gmEl.className = 'font-mono-num text-base font-bold mt-0.5 ' + (bode.gmDb < 0 ? 'text-rose-400' : (bode.gmDb < 3 ? 'text-amber-300' : 'text-cyan-300'));
+        document.getElementById('kpiGMSub').textContent = `Lin: ${bode.gmLin.toFixed(2)} | ωpc: ${bode.wpc.toFixed(3)}`;
+      } else {
+        gmEl.textContent = '∞ dB';
+        gmEl.className = 'font-mono-num text-base font-bold text-cyan-300 mt-0.5';
+        document.getElementById('kpiGMSub').textContent = 'Lin: ∞ | ωpc: Yok';
+      }
+
+      const pmEl = document.getElementById('kpiPM');
+      if (bode.pm !== null) {
+        pmEl.textContent = bode.pm.toFixed(2) + '°';
+        pmEl.className = 'font-mono-num text-base font-bold mt-0.5 ' + (bode.pm < 0 ? 'text-rose-400' : (bode.pm < 20 ? 'text-amber-300' : 'text-emerald-300'));
+        document.getElementById('kpiPMSub').textContent = `ωgc: ${bode.wgc.toFixed(3)} rad/s`;
+      } else {
+        pmEl.textContent = '> 90°';
+        pmEl.className = 'font-mono-num text-base font-bold text-emerald-300 mt-0.5';
+        document.getElementById('kpiPMSub').textContent = '0 dB geçişi yok';
+      }
+
+      // s-Düzlemi Padé etiketi & Kutup listesi
+      document.getElementById('padeBadge').classList.toggle('hidden', !pz.usesPade);
+      document.getElementById('splaneSubtitle').textContent = pz.usesPade
+        ? 'Kapalı çevrim kökleri — Ölü zaman için Padé (2,2) kullanıldı'
+        : 'Kapalı çevrim kökleri (Durand-Kerner çözümü)';
+
+      document.getElementById('poleCountLabel').textContent = `${pz.poles.length} Kutup`;
+      document.getElementById('polesList').innerHTML = pz.poles.map((p, idx) => {
+        const color = p.re > 1e-4 ? 'text-rose-400' : (Math.abs(p.re) <= 1e-4 ? 'text-amber-300' : 'text-cyan-300');
+        const imStr = Math.abs(p.im) < 1e-5 ? '' : (p.im >= 0 ? ` + ${p.im.toFixed(4)}j` : ` - ${Math.abs(p.im).toFixed(4)}j`);
+        return `<div class="${color} truncate">p<sub>${idx + 1}</sub> = ${p.re.toFixed(4)}${imStr}</div>`;
+      }).join('');
+
+      // Mühendislik teşhis mesajı
+      const diag = document.getElementById('diagnosisBox');
+      if (status === 'UNSTABLE') {
+        diag.className = 'mt-3 text-xs text-rose-200 bg-rose-950/35 border border-rose-900/60 border-l-2 border-l-rose-500 rounded-lg p-2.5 leading-relaxed';
+        diag.innerHTML = `<strong>Kararsız Sistem:</strong> Sağ yarı düzlemde (RHP) kutup veya negatif faz marjı oluştu. K<sub>p</sub>'yi düşürün, T<sub>i</sub>'yi artırın veya Tyreus-Luyben / IMC ayarını deneyin.`;
+      } else if (status === 'MARGINAL') {
+        diag.className = 'mt-3 text-xs text-amber-200 bg-amber-950/35 border border-amber-900/60 border-l-2 border-l-amber-400 rounded-lg p-2.5 leading-relaxed';
+        diag.innerHTML = `<strong>Marjinal Kararlı Sınır:</strong> Sistem sürekli salınım (osilasyon) noktasında (GM ≈ 0 dB, PM ≈ 0°). Bozuculara karşı güvenlik payı yoktur.`;
+      } else if (!iActive) {
+        diag.className = 'mt-3 text-xs text-slate-300 bg-slate-950/75 border border-slate-800/90 border-l-2 border-l-cyan-400 rounded-lg p-2.5 leading-relaxed';
+        diag.innerHTML = `<strong>İntegral Kapalı (T<sub>i</sub> = ∞):</strong> Sistem kararlı ancak integral etkisi olmadığı için kalıcı durum hatası <span class="font-mono-num text-amber-300">e<sub>ss</sub> = ${sim.ess.toFixed(6)}</span> sıfırlanamıyor.`;
+      } else {
+        diag.className = 'mt-3 text-xs text-slate-300 bg-slate-950/75 border border-slate-800/90 border-l-2 border-l-emerald-400 rounded-lg p-2.5 leading-relaxed';
+        diag.innerHTML = `<strong>Kararlı Çalışma:</strong> Kapalı çevrim kutupları sol yarı düzlemde (LHP). Faz marjı <span class="font-mono-num text-emerald-300">${bode.pm !== null ? bode.pm.toFixed(1) + '°' : '>90°'}</span> ve integral etkisi kalıcı hatayı sıfırlıyor.`;
+      }
+
+      // 3 Grafiği çiz
+      drawStepChart(sim, status);
+      drawBodeChart(bode);
+      drawSPlane(pz);
+    }
+
+    // =========================================================================
+    // 13. MOD DEĞİŞTİRME & SİSTEM GÜNCELLEME AKSİYONLARI
+    // =========================================================================
+    function switchPrimaryMode(mode) {
+      state.primaryMode = mode;
+      const isMath = mode === 'math';
+      document.getElementById('modeMathPanel').classList.toggle('hidden', !isMath);
+      document.getElementById('modeFieldPanel').classList.toggle('hidden', isMath);
+
+      const mathBtn = document.getElementById('tabMathBtn');
+      const fieldBtn = document.getElementById('tabFieldBtn');
+      mathBtn.className = isMath
+        ? 'px-3.5 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center gap-2 cursor-pointer bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+        : 'px-3.5 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center gap-2 cursor-pointer text-slate-400 hover:text-white border border-transparent';
+      fieldBtn.className = !isMath
+        ? 'px-3.5 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center gap-2 cursor-pointer bg-amber-500/20 text-amber-300 border border-amber-500/40'
+        : 'px-3.5 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center gap-2 cursor-pointer text-slate-400 hover:text-white border border-transparent';
+
+      if (isMath) {
+        applyMathPlantFromInputs(false);
+      } else {
+        switchFieldSubMode(state.fieldSubMode);
+      }
+    }
+
+    function switchFieldSubMode(sub) {
+      state.fieldSubMode = sub;
+      const isClosed = sub === 'closed';
+      document.getElementById('fieldClosedBox').classList.toggle('hidden', !isClosed);
+      document.getElementById('fieldFopdtBox').classList.toggle('hidden', isClosed);
+
+      document.getElementById('subClosedBtn').className = isClosed
+        ? 'px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer bg-amber-500/20 text-amber-300 border border-amber-500/40'
+        : 'px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer text-slate-400 hover:text-white border border-transparent';
+      document.getElementById('subFopdtBtn').className = !isClosed
+        ? 'px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+        : 'px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer text-slate-400 hover:text-white border border-transparent';
+
+      if (isClosed) applyFieldClosedPlant(false);
+      else applyFieldFopdtPlant(false);
+    }
+
+    function renderPresetButtons() {
+      const container = document.getElementById('presetButtonsContainer');
+      container.innerHTML = MATH_PRESETS.map(pr => {
+        const active = state.activePresetId === pr.id;
+        const cls = active
+          ? 'px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-cyan-500/20 text-cyan-300 border border-cyan-500/45 transition cursor-pointer'
+          : 'px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 transition cursor-pointer';
+        return `<button type="button" onclick="selectMathPreset('${pr.id}')" class="${cls}">${pr.label}</button>`;
+      }).join('');
+    }
+
+    function selectMathPreset(id) {
+      state.activePresetId = id;
+      renderPresetButtons();
+      const pr = MATH_PRESETS.find(x => x.id === id);
+      if (!pr || pr.id === 'custom') {
+        document.getElementById('mathNumInput').focus();
+        return;
+      }
+      document.getElementById('mathNumInput').value = pr.num.join(', ');
+      document.getElementById('mathDenInput').value = pr.den.join(', ');
+      document.getElementById('mathThetaInput').value = pr.theta.toFixed(6);
+      applyMathPlantFromInputs(true);
+    }
+
+    function applyMathPlantFromInputs(autoTune = false) {
+      const errBox = document.getElementById('mathErrorBox');
+      errBox.classList.add('hidden');
+
+      const num = parsePolyString(document.getElementById('mathNumInput').value);
+      const den = parsePolyString(document.getElementById('mathDenInput').value);
+      const theta = parseLocaleNum(document.getElementById('mathThetaInput').value);
+
+      if (!num || !den || !Number.isFinite(theta) || theta < 0) {
+        errBox.textContent = 'Geçersiz giriş: Pay ve payda virgülle ayrılmış sayılar, ölü zaman ≥ 0 olmalıdır.';
+        errBox.classList.remove('hidden');
+        return;
+      }
+      if (den.length - 1 > 5) {
+        errBox.textContent = 'Payda polinomu en fazla 5. dereceden (6 katsayı) olabilir.';
+        errBox.classList.remove('hidden');
+        return;
+      }
+      if (num.length > den.length) {
+        errBox.textContent = 'Transfer fonksiyonu nedensel (proper) olmalıdır: Pay derecesi payda derecesinden büyük olamaz.';
+        errBox.classList.remove('hidden');
+        return;
+      }
+      if (Math.abs(den[0]) < 1e-12) {
+        errBox.textContent = 'Payda polinomunun baş katsayısı sıfır olamaz.';
+        errBox.classList.remove('hidden');
+        return;
+      }
+
+      // Eğer tam 1. dereceden + ölü zamanlı bir sistemse FOPDT bilgilerini de doldur
+      const isFirstOrderFopdt = (num.length === 1 && den.length === 2 && den[1] > 0 && den[0] > 0 && theta > 0);
+      const K = isFirstOrderFopdt ? num[0] / den[1] : state.plant.K;
+      const tau = isFirstOrderFopdt ? den[0] / den[1] : state.plant.tau;
+
+      state.plant = {
+        num,
+        den,
+        theta,
+        isFopdt: isFirstOrderFopdt,
+        K,
+        tau,
+        lambda: isFirstOrderFopdt ? Math.max(0.8 * theta, 0.1 * tau) : state.plant.lambda
+      };
+
+      updatePlantReadoutAndSliders();
+      if (autoTune && Number.isFinite(state.stabilityBoundary.ku)) {
+        applyQuickMethod('tl_pid');
+      } else {
+        updateSimulationAndCharts();
+      }
+    }
+
+    function applyFieldClosedPlant(autoTune = true) {
+      const errBox = document.getElementById('fieldErrorBox');
+      errBox.classList.add('hidden');
+      const ku = parseLocaleNum(document.getElementById('fieldKuInput').value);
+      const pu = parseLocaleNum(document.getElementById('fieldPuInput').value);
+
+      if (!Number.isFinite(ku) || ku <= 0 || !Number.isFinite(pu) || pu <= 0) {
+        errBox.textContent = 'Kritik Kazanç (Ku) ve Kritik Periyot (Pu) sıfırdan büyük olmalıdır.';
+        errBox.classList.remove('hidden');
+        return;
+      }
+
+      // Gp(s) = (8/Ku) / (s/α + 1)^3 = ((8/Ku)*α^3) / (s^3 + 3α s^2 + 3α^2 s + α^3)
+      const alpha = (2 * Math.PI) / (Math.sqrt(3) * pu);
+      const a3 = alpha * alpha * alpha;
+      state.plant = {
+        num: [(8.0 / ku) * a3],
+        den: [1, 3 * alpha, 3 * alpha * alpha, a3],
+        theta: 0,
+        isFopdt: false,
+        K: 8.0 / ku,
+        tau: 1 / alpha,
+        lambda: 1.0
+      };
+
+      updatePlantReadoutAndSliders();
+      if (autoTune) applyQuickMethod('tl_pid');
+      else updateSimulationAndCharts();
+    }
+
+    function applyFieldFopdtPlant(autoTune = true) {
+      const errBox = document.getElementById('fieldErrorBox');
+      errBox.classList.add('hidden');
+      const K = parseLocaleNum(document.getElementById('fopdtKInput').value);
+      const tau = parseLocaleNum(document.getElementById('fopdtTauInput').value);
+      const theta = parseLocaleNum(document.getElementById('fopdtThetaInput').value);
+      let lam = parseLocaleNum(document.getElementById('fopdtLambdaInput').value);
+
+      if (!Number.isFinite(K) || K <= 0 || !Number.isFinite(tau) || tau <= 0 || !Number.isFinite(theta) || theta < 0) {
+        errBox.textContent = 'K > 0, τ > 0 ve θ ≥ 0 olacak şekilde geçerli sayılar girin.';
+        errBox.classList.remove('hidden');
+        return;
+      }
+      if (!Number.isFinite(lam) || lam <= 0) {
+        lam = Math.max(0.8 * theta, 0.1 * tau);
+        document.getElementById('fopdtLambdaInput').value = lam.toFixed(6);
+      }
+
+      state.plant = {
+        num: [K],
+        den: [tau, 1],
+        theta,
+        isFopdt: true,
+        K,
+        tau,
+        lambda: lam
+      };
+
+      updatePlantReadoutAndSliders();
+      if (autoTune && theta > 0) applyQuickMethod('imc_pid');
+      else updateSimulationAndCharts();
+    }
+
+    // =========================================================================
+    // 14. EVENT BAĞLANTILARI & ÇEKMECE KONTROLÜ
+    // =========================================================================
+    function bindPidControl(key, inputId, sliderId, minVal) {
+      const inputEl = document.getElementById(inputId);
+      const sliderEl = document.getElementById(sliderId);
+
+      sliderEl.addEventListener('input', () => {
+        const val = Math.max(minVal, parseFloat(sliderEl.value));
+        state.pid[key] = +val.toFixed(6);
+        inputEl.value = state.pid[key].toFixed(6);
+        updateSimulationAndCharts();
+      });
+
+      inputEl.addEventListener('input', () => {
+        const parsed = parseLocaleNum(inputEl.value);
+        if (Number.isFinite(parsed)) {
+          const clamped = Math.max(minVal, Math.min(KEYBOARD_MAX, parsed));
+          state.pid[key] = +clamped.toFixed(6);
+          sliderEl.value = Math.min(state.sliderMax[key], state.pid[key]);
+          updateSimulationAndCharts();
+        }
+      });
+
+      const commit = () => {
+        const parsed = parseLocaleNum(inputEl.value);
+        if (Number.isFinite(parsed)) {
+          state.pid[key] = +Math.max(minVal, Math.min(KEYBOARD_MAX, parsed)).toFixed(6);
+        }
+        sliderEl.value = Math.min(state.sliderMax[key], state.pid[key]);
+        inputEl.value = state.pid[key].toFixed(6);
+        updateSimulationAndCharts();
+      };
+
+      inputEl.addEventListener('blur', commit);
+      inputEl.addEventListener('keydown', e => { if (e.key === 'Enter') { commit(); inputEl.blur(); } });
+    }
+
+    bindPidControl('kp', 'kpInput', 'kpSlider', 0.000001);
+    bindPidControl('ti', 'tiInput', 'tiSlider', 0.000001);
+    bindPidControl('td', 'tdInput', 'tdSlider', 0.000000);
+
+    document.getElementById('iActiveToggle').addEventListener('change', e => {
+      state.pid.iActive = e.target.checked;
+      syncPidInputs(false);
+      updateSimulationAndCharts();
+    });
+    document.getElementById('dActiveToggle').addEventListener('change', e => {
+      state.pid.dActive = e.target.checked;
+      syncPidInputs(false);
+      updateSimulationAndCharts();
+    });
+
+    // Simülasyon ayarları
+    document.getElementById('disturbanceToggle').addEventListener('change', e => {
+      state.sim.disturbance = e.target.checked;
+      updateSimulationAndCharts();
+    });
+    document.getElementById('autoTsimToggle').addEventListener('change', e => {
+      state.sim.autoTsim = e.target.checked;
+      document.getElementById('tsimInput').disabled = e.target.checked;
+      updateSimulationAndCharts();
+    });
+    document.getElementById('tsimInput').addEventListener('change', e => {
+      const v = parseLocaleNum(e.target.value);
+      if (Number.isFinite(v) && v >= 1 && v <= 500) {
+        state.sim.tSim = v;
+        updateSimulationAndCharts();
+      } else {
+        e.target.value = state.sim.tSim.toFixed(1);
+      }
+    });
+
+    // Matematiksel mod buton & manuel değişiklik
+    document.getElementById('applyMathPlantBtn').addEventListener('click', () => {
+      state.activePresetId = 'custom';
+      renderPresetButtons();
+      applyMathPlantFromInputs(false);
+    });
+    ['mathNumInput', 'mathDenInput', 'mathThetaInput'].forEach(id => {
+      document.getElementById(id).addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          state.activePresetId = 'custom';
+          renderPresetButtons();
+          applyMathPlantFromInputs(false);
+        }
+      });
+    });
+
+    // Saha modu butonları
+    document.getElementById('applyFieldClosedBtn').addEventListener('click', () => applyFieldClosedPlant(true));
+    document.getElementById('applyFopdtBtn').addEventListener('click', () => applyFieldFopdtPlant(true));
+    document.getElementById('autoLambdaBtn').addEventListener('click', () => {
+      const tau = parseLocaleNum(document.getElementById('fopdtTauInput').value);
+      const th = parseLocaleNum(document.getElementById('fopdtThetaInput').value);
+      if (Number.isFinite(tau) && Number.isFinite(th)) {
+        const rec = Math.max(0.8 * th, 0.1 * tau);
+        document.getElementById('fopdtLambdaInput').value = rec.toFixed(6);
+      }
+    });
+
+    // Katsayı Tablosu Çekmecesi
+    const drawerBackdrop = document.getElementById('tableDrawerBackdrop');
+    function openTableDrawer() {
+      renderTuningDrawerTables();
+      drawerBackdrop.classList.remove('hidden');
+    }
+    function closeTableDrawer() {
+      drawerBackdrop.classList.add('hidden');
+    }
+    document.getElementById('openTableDrawerBtn').addEventListener('click', openTableDrawer);
+    document.getElementById('closeTableDrawerBtn').addEventListener('click', closeTableDrawer);
+    drawerBackdrop.addEventListener('click', e => { if (e.target === drawerBackdrop) closeTableDrawer(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawerBackdrop.classList.contains('hidden')) closeTableDrawer(); });
+
+    window.addEventListener('resize', () => updateSimulationAndCharts());
+
+    // Başlatma
+    window.addEventListener('load', () => {
+      renderPresetButtons();
+      switchPrimaryMode('math');
+      applyQuickMethod('tl_pid');
+    });
+  </script>
+</body>
+</html>
